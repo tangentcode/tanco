@@ -98,21 +98,6 @@ def spawn(program_args, use_shell):
                             stdout=subprocess.PIPE)
 
 
-def await_results(program, timeout_seconds=2):
-    """
-    This polls the child program until it finishes
-    executing. If it takes more than =timeout_seconds=,
-    kill the program and raise a TimeoutFailure.
-    """
-    countdown = timeout_seconds * 10
-    while program.poll() is None and countdown > 0:
-        time.sleep(0.1)
-        countdown -= 1
-    if countdown == 0:
-        program.kill()
-        raise TimeoutFailure("<program timed out>")
-
-
 def send_cmds(program, opcodes):
     if INPUT_PATH:
         cmds = open(INPUT_PATH, "w")
@@ -162,7 +147,7 @@ def run_tests(program_args, use_shell):
         else:
             print()
             print("All %d tests passed." % num_passed)
-    except (TimeoutFailure, TestFailure):
+    except (subprocess.TimeoutExpired, TestFailure):
         print()
         print("%d tests passed." % num_passed)
         print("Test [%s] failed." % test.name)
