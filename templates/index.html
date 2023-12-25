@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Rogo test runner</title>
+  <script src="/static/htmx.min.js"></script>
+  <link rel="stylesheet" href="/static/style.css"/>
+</head>
+<body>
+
+<h1>Rogo</h1>
+
+<nav>
+  <ul hx-boost="true" hx-target="#main">
+    <li><a href="/about">About</a></li>
+    <li><a href="/c">Challenges</a></li>
+  </ul>
+</nav>
+
+<main id="main"
+      hx-trigger="load once"
+      hx-get="/about">
+</main>
+
+
+</body>
+</html>
