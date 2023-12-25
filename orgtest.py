@@ -1,6 +1,6 @@
 """
-Implements a finite state machine to extract the learntris
-test descriptions from testplan.org.
+Implements a finite state machine to extract rogo
+test descriptions from org files.
 
 The org file format is described here:
 
@@ -39,6 +39,7 @@ import os
 
 TestDescription = namedtuple("TestDescription", ['name', 'lines'])
 
+
 class TestReaderStateMachine:
     """
     A simple finite state machine to extract tests from an outline.
@@ -64,12 +65,12 @@ class TestReaderStateMachine:
         """
         self.on_line(line)
 
-    #-- event handlers -----------------------------------------
+    # -- event handlers -----------------------------------------
 
     def on_line(self, line):
         self.lineno += 1
         match = [row[2:] for row in self.transitions 
-                 if row[0]==self.state and line.startswith(row[1])]
+                 if row[0] == self.state and line.startswith(row[1])]
         if match: # match :: [( to_state, method )] of len 1
             self.state = match[0][0]
             match[0][1](line)
@@ -99,7 +100,7 @@ class TestReaderStateMachine:
     def on_end_test(self, line):
         pass
 
-    #-- main public interface ----------------------------------
+    # -- main public interface ----------------------------------
 
     def extract_tests(self, path):
         """
@@ -108,6 +109,7 @@ class TestReaderStateMachine:
         """
         for line in open(path): self(line)
         return self.tests
+
 
 def tests(path=None):
     """
@@ -118,7 +120,8 @@ def tests(path=None):
         path = os.path.join(os.path.dirname(__file__), 'testplan.org')
     return TestReaderStateMachine().extract_tests(path)
 
-if __name__=="__main__":
+
+def main():
     if not os.path.exists('tests'): os.mkdir('tests')
     for i, test in enumerate(tests()):
         path = "tests/test{0:03}.txt".format(i)
@@ -128,3 +131,7 @@ if __name__=="__main__":
         for line in test.lines:
             io.write(line)
         io.close()
+
+
+if __name__ == "__main__":
+    main()
