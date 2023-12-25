@@ -1,0 +1,50 @@
+#+title: rogo client test suite
+
+# This file is created with org-mode, an awesome outliner and
+# personal information manager for emacs. In org-mode, this file
+# will appear as a foldable outline, but if you don't want to use
+# emacs, it's fine to just edit it by hand.
+
+* DONE [1/2] basic i/o
+** DONE establish a command loop and a way to exit
+
+#+name: io.q
+#+begin_src
+> q
+= q : quit
+: The 'q' command instructs rogo-shell to quit.
+:
+: the shell should not produce any output unless
+: explicitly instructed to do so.
+#+end_src
+
+** TODO list available challenges/courses
+
+#+name: io.c
+#+begin_src
+> c
+["rogo client test suite"]
+= c : list available challenges
+#+end_src
+
+
+* NOTE How to add a new test.
+
+- Think of a situation that needs to be tested.
+- Think of the commands you would need to issue to make that situation happen.
+- Write a new test that shows the expected behavior.
+
+Here is the test format (remove the leading ':  ' from each line, and also the comments on the right).
+
+:  #+name: test.name                    <- must be unique!
+:  #+begin_src                          <- marks start of test
+:  # other lines with # are comments    <- comment
+:  > o                                  <- '>' indicates an input line
+:  output                               <- anything besides (#, >, :, or =)
+:  more output                           | is expected output.
+:  > q                                  <- always send the quit command!
+:  = my very own test                   <- this is the title for the test
+:  : This is where I describe the test. <- ':' indicates a line of description
+:  : Here's another descriptive line.    | these lines show up when a test fails.
+:  #+end_src                            <- marks end of test
+

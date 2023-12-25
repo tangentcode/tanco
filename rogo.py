@@ -61,10 +61,6 @@ class TestFailure(Exception):
         return self.msg
 
 
-class TimeoutFailure(TestFailure):
-    pass
-
-
 def parse_test(lines):
     while lines and lines[-1].strip() == "":
         lines.pop()
@@ -108,6 +104,7 @@ def send_cmds(program, opcodes):
         for cmd in opcodes['in']:
             program.stdin.write(cmd + "\n")
             program.stdin.flush()
+        program.stdin.close()
 
 
 def run_test(program, opcodes):
@@ -136,8 +133,9 @@ def run_test(program, opcodes):
 
 def run_tests(program_args, use_shell):
     num_passed = 0
+    tests = orgtest.tests(TEST_PLAN)
     try:
-        for i, test in enumerate(orgtest.tests(TEST_PLAN)):
+        for i, test in enumerate(tests):
             opcodes = parse_test(test.lines)
             program = spawn(program_args, use_shell)
             run_test(program, opcodes)
@@ -147,10 +145,13 @@ def run_tests(program_args, use_shell):
         else:
             print()
             print("All %d tests passed." % num_passed)
-    except (subprocess.TimeoutExpired, TestFailure):
+    except (subprocess.TimeoutExpired, TestFailure) as e:
         print()
-        print("%d tests passed." % num_passed)
-        print("Test [%s] failed." % test.name)
+        print("%d of %d tests passed." % (num_passed, len(tests)))
+        if isinstance(e, subprocess.TimeoutExpired):
+            print("Test [%s] timed out." % test.name)
+        else:
+            print("Test [%s] failed." % test.name)
 
 
 def find_target():
