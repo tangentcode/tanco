@@ -18,7 +18,7 @@ class RogoDriver(cmd.Cmd):
     def do_c(self, arg):
         """List challenges"""
         for x in self.client.list_challenges():
-            print(json.dumps([x['id'], x['title']]))
+            print(json.dumps([x['name'], x['title']]))
 
     def do_q(self, arg):
         """Run the test suite."""

@@ -1,8 +1,17 @@
 from flask import Flask, render_template, make_response, abort
 import json
+import sqlite3
 
+SDB_PATH = 'rogo.sdb'  # TODO: make this configurable
 app = Flask(__name__)
+ok = None
 
+def rel(sql):
+    dbc = sqlite3.connect(SDB_PATH)
+    cur = dbc.execute(sql)
+    cols = [x[0] for x in cur.description]
+    return [{k: v for k, v in zip(cols, vals)}
+            for vals in cur.fetchall()]
 
 @app.route('/')
 def index():
@@ -14,10 +23,11 @@ def about():
 
 
 def list_challenges_data():
-    return [dict(id=x[0], title=x[1], num_tests=x[2]) for x in [
-        ('lt', 'learntris', 10),
-        ('rogo', 'rogo client test suite', 5003030),
-        ('other', 'some other course', 4)]]
+    return rel("""
+        select c.name, c.title,
+          (select count(*) from tests t 
+            where t.chal_id = c.id) as num_tests
+        from challenges c""")
 
 @app.route('/c:json')
 def list_challenges_json():
@@ -34,10 +44,9 @@ def list_challenges():
 @app.route('/c/<name>')
 def show_challenge(name):
     data = [x for x in list_challenges_data()
-            if x['id'] == name]
-    if not data: abort(404)
+            if x['name'] == name]
+    abort(404) if not data else ok
     return render_template('challenge.html', data=data[0])
-
 
 
 if __name__ == '__main__':

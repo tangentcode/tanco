@@ -23,8 +23,8 @@
 #+name: io.c
 #+begin_src
 > c
-["lt", "learntris"]
 ["rogo", "rogo client test suite"]
+["ltris", "learntris"]
 ["other", "some other course"]
 = c : list available challenges
 #+end_src
