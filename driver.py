@@ -11,7 +11,6 @@ class RogoDriver(cmd.Cmd):
     completekey = ''
     cmdqueue = ''
 
-
     def __init__(self):
         self.client = RogoClient()
 
@@ -30,4 +29,7 @@ class RogoDriver(cmd.Cmd):
 
 
 if __name__ == '__main__':
-    RogoDriver().cmdloop()
+    if len(sys.argv) > 1:
+        RogoDriver().onecmd(' '.join(sys.argv[1:]))
+    else:
+        RogoDriver().cmdloop()
