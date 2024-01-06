@@ -4,7 +4,7 @@ command-line driver for rogo client.
 """
 import sys, cmd, json
 from client import RogoClient
-
+import webbrowser
 
 class RogoDriver(cmd.Cmd):
     prompt = ""
@@ -13,6 +13,14 @@ class RogoDriver(cmd.Cmd):
 
     def __init__(self):
         self.client = RogoClient()
+
+    def do_login(self, arg):
+        """Login to the server"""
+        pre = self.client.get_pre_token()
+        print("pre token: %s" % pre)
+        webbrowser.open(self.client.url + '/auth/login?pre=' + pre)
+        jwt = self.client.get_jwt(pre=pre)
+        print("json web token: %s" % jwt)
 
     def do_c(self, arg):
         """List challenges"""
@@ -29,7 +37,6 @@ class RogoDriver(cmd.Cmd):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) > 1:
-        RogoDriver().onecmd(' '.join(sys.argv[1:]))
-    else:
-        RogoDriver().cmdloop()
+    d = RogoDriver()
+    if len(sys.argv) > 1: d.onecmd(' '.join(sys.argv[1:]))
+    else: d.cmdloop()

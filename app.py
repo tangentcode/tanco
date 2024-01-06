@@ -42,6 +42,7 @@ def list_challenges():
     return flask.render_template('challenges.html',
                                  data=list_challenges_data())
 
+
 @app.route('/c/<name>')
 def show_challenge(name):
     data = [x for x in list_challenges_data()
@@ -50,5 +51,59 @@ def show_challenge(name):
     return flask.render_template('challenge.html', data=data[0])
 
 
+@app.route('/login', methods=['GET'])
+def get_login():
+    return flask.render_template('login.html')
+
+
+# == Authentication for Command Line Client ===
+
+@app.route('/auth/login', methods=['GET'])
+def get_auth_login():
+    data = {'pre': flask.request.args.get('pre', '??')}
+    return flask.render_template('login.html', **data)
+
+
+@app.route('/auth/pre', methods=['GET'])
+def get_auth_pre():
+    return """
+    <form method="POST" action="/auth/pre">
+        <input type="submit" value="get pre-token">
+    </form>
+    """
+
+
+@app.route('/auth/pre', methods=['POST'])
+def post_auth_pre():
+    return {'token': 'PRE'}
+
+
+@app.route('/auth/jwt', methods=['GET'])
+def get_auth_jwt():
+    return """
+    <form method="POST" action="/auth/jwt">
+        <label for="pre">pre-token:</label>
+        <input type="text" name="pre">
+        <input type="submit" value="get jwt-token">
+    </form>"""
+
+
+@app.route('/auth/jwt', methods=['POST'])
+def post_auth_jwt():
+    return {'token': 'JWT'}
+
+
+@app.route('/auth/success', methods=['POST'])
+def post_auth_success():
+    pre = flask.request.form.get('preToken')
+    acc = flask.request.form.get('accessToken')
+    return """
+    <h1>Success!</h1>
+    <p>You have successfully logged in.</p>
+    <p>You can close this browser tab.</p>
+    """
+
+
+
 if __name__ == '__main__':
-    app.run()
+    app.run(host='localhost', port=5000)
