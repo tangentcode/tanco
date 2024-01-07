@@ -42,3 +42,4 @@ if __name__ == '__main__':
     d = RogoDriver()
     if len(sys.argv) > 1: d.onecmd(' '.join(sys.argv[1:]))
     else: d.cmdloop()
+    sys.stderr.close()

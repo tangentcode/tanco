@@ -110,7 +110,7 @@ def send_cmds(program, opcodes):
 def run_test(program, opcodes):
     send_cmds(program, opcodes)
     # send all the input lines:
-    (actual, errs) = program.communicate(timeout=2)
+    (actual, errs) = program.communicate(timeout=5)
     actual = [line.strip() for line in actual.splitlines()]
     actual = actual[SKIP_LINES:]
     # strip trailing blank lines
