@@ -1,3 +1,8 @@
+# sqlite database
+.rogo.sdb
+# private key for server
+rogo_auth_key.*
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

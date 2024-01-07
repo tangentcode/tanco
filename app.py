@@ -1,9 +1,18 @@
 import flask
 import sqlite3
+import asyncio
+import jwt as jwtlib
 
 SDB_PATH = 'rogo.sdb'  # TODO: make this configurable
 app = flask.Flask(__name__)
 ok = None
+
+# this maps pre-tokens to async queues that
+# will eventually yield the jwt token.
+queues = {}
+
+JWT_OBJ = jwtlib.JWT()
+JWT_KEY = jwtlib.jwk_from_pem(open('rogo_auth_key.pem', 'rb').read())
 
 
 def rel(sql):
@@ -75,7 +84,10 @@ def get_auth_pre():
 
 @app.route('/auth/pre', methods=['POST'])
 def post_auth_pre():
-    return {'token': 'PRE'}
+    pre = 'PRE' # TODO: random string
+    assert pre not in queues, "repeated pre-token"
+    queues[pre] = asyncio.Queue()
+    return {'token': pre}
 
 
 @app.route('/auth/jwt', methods=['GET'])
@@ -89,20 +101,37 @@ def get_auth_jwt():
 
 
 @app.route('/auth/jwt', methods=['POST'])
-def post_auth_jwt():
-    return {'token': 'JWT'}
+async def post_auth_jwt():
+    req = flask.request
+    pre = req.json.get('pre') if req.is_json else req.form.get('pre')
+    if pre not in queues:
+        return f"pre-token not found: {pre}"
+    jwt = await queues[pre].get()
+    return {'token': f'{pre}->{jwt}'}
 
 
 @app.route('/auth/success', methods=['POST'])
 def post_auth_success():
     pre = flask.request.form.get('preToken')
-    acc = flask.request.form.get('accessToken')
+    ac0 = flask.request.form.get('accessToken')
+    acc = JWT_OBJ.decode(ac0, do_verify=False)
+    # TODO: validate acc against auth provider (firebase)
+    # (otherwise attacker could just send any token)
+
+    data = {'uid': acc['sub'], 'eml': acc['email']}
+    jwt = JWT_OBJ.encode(data, JWT_KEY, alg='RS256')
+    try:
+        q = queues[pre]
+        q.put_nowait(jwt)
+    except KeyError:
+        return f"pre-token not found: {pre}"
+    except asyncio.QueueFull:
+        return "pre-token already used"
     return """
     <h1>Success!</h1>
     <p>You have successfully logged in.</p>
     <p>You can close this browser tab.</p>
     """
-
 
 
 if __name__ == '__main__':
