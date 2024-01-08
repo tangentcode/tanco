@@ -30,11 +30,11 @@ class RogoDriver(cmd.Cmd):
             print(json.dumps([x['name'], x['title']]))
 
     def do_q(self, _arg):
-        """Run the test suite."""
+        """exit the shell"""
         return True
 
     def do_EOF(self, _arg):
-        """Exit"""
+        """Exit when ^D pressed or EOF reached"""
         return True
 
 
