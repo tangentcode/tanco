@@ -26,6 +26,7 @@ first feature.
 """
 import sys, os, errno, subprocess, difflib, time, traceback
 import orgtest
+from steps import TestStep
 
 # where to write the input to the child program
 # (for cases where stdin is not available)
@@ -61,7 +62,8 @@ class TestFailure(Exception):
         return self.msg
 
 
-def parse_test(lines):
+def parse_test(test):
+    lines = test.lines
     while lines and lines[-1].strip() == "":
         lines.pop()
     opcodes = {
@@ -83,7 +85,13 @@ def parse_test(lines):
             opcodes['in'].append(sline[1:].lstrip())
         else:                          # expected output
             opcodes['out'].append(sline)
-    return opcodes
+    step = TestStep(
+        name=test.name,
+        head=opcodes['title'],
+        body='\n'.join(opcodes['doc']),
+        ilines=opcodes['in'],
+        olines=opcodes['out'])
+    return step
 
 
 def spawn(program_args, use_shell):
@@ -94,21 +102,22 @@ def spawn(program_args, use_shell):
                             stdout=subprocess.PIPE)
 
 
-def send_cmds(program, opcodes):
+def send_cmds(program, ilines):
     if INPUT_PATH:
         cmds = open(INPUT_PATH, "w")
-        for cmd in opcodes['in']:
+        for cmd in ilines:
             cmds.write(cmd + "\n")
         cmds.close()
     else:
-        for cmd in opcodes['in']:
+        for cmd in ilines:
             program.stdin.write(cmd + "\n")
             program.stdin.flush()
         program.stdin.close()
 
 
-def run_test(program, opcodes):
-    send_cmds(program, opcodes)
+def run_test(program, test):
+    step = parse_test(test)
+    send_cmds(program, step.ilines)
     # send all the input lines:
     (actual, errs) = program.communicate(timeout=5)
     actual = [line.strip() for line in actual.splitlines()]
@@ -116,17 +125,17 @@ def run_test(program, opcodes):
     # strip trailing blank lines
     while actual and actual[-1] == "":
         actual.pop()
-    if actual != opcodes['out']:
+    if actual != step.olines:
         print()
-        print("test [%s] failed" % opcodes['title'])
+        print("test [%s] failed" % step.head)
         print("---- input ----")
-        for cmd in opcodes['in']:
+        for cmd in step.ilines:
             print(cmd)
-        print('\n'.join(opcodes['doc']))
+        print('\n'.join(step.body))
         # print("---- expected results ----")
         # print('\n'.join(opcodes['out']))
-        print("---- diff from expected ----")
-        diff = '\n'.join(list(difflib.Differ().compare(actual, opcodes['out'])))
+        print("---- diff of expected vs actual ----")
+        diff = '\n'.join(list(difflib.Differ().compare(actual, step.olines)))
         print(diff)
         raise TestFailure('output mismatch')
 
@@ -136,9 +145,8 @@ def run_tests(program_args, use_shell):
     tests = orgtest.tests(TEST_PLAN)
     try:
         for i, test in enumerate(tests):
-            opcodes = parse_test(test.lines)
             program = spawn(program_args, use_shell)
-            run_test(program, opcodes)
+            run_test(program, test)
             # either it passed or threw exception
             print('.', end='')
             num_passed += 1
