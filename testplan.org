@@ -1,4 +1,5 @@
 #+title: rogo client test suite
+#+url: https://rogo.tangentcode.com/rogo
 
 # This file is created with org-mode, an awesome outliner and
 # personal information manager for emacs. In org-mode, this file
@@ -22,11 +23,11 @@
 
 #+name: io.c
 #+begin_src
-> c
+> challenges
 ["rogo", "rogo client test suite"]
 ["ltris", "learntris"]
 ["other", "some other course"]
-= c : list available challenges
+= challenges : list available challenges
 #+end_src
 
 

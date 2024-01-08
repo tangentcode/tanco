@@ -30,7 +30,7 @@ class RogoDriver(cmdlib.Cmd):
         """Run the tests"""
         runner.main(['rogo']+[x for x in args.split(' ') if x != ''])
 
-    def do_c(self, _arg):
+    def do_challenges(self, _arg):
         """List challenges"""
         for x in self.client.list_challenges():
             print(json.dumps([x['name'], x['title']]))
