@@ -124,12 +124,12 @@ def run_tests(program_args, use_shell):
             print("Test [%s] failed." % test.name)
 
 
-def find_target():
+def find_target(argv: [str]):
     """returns (program_args, use_shell)"""
     default = "./my-program"
     use_shell = False
-    if len(sys.argv) > 1:
-        program_args = sys.argv[1:]
+    if len(argv) > 1:
+        program_args = argv[1:]
         if "--shell" in program_args:
             program_args.remove("--shell")
             use_shell = True
@@ -161,9 +161,9 @@ def find_target():
         raise FileNotFoundError("%s" % program_args[0])
 
 
-def main():
+def main(argv: [str]):
     try:
-        cmdline, use_shell = find_target()
+        cmdline, use_shell = find_target(argv)
     except FileNotFoundError as e:
         print('File not found:', e)
     else:
@@ -198,4 +198,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    main(sys.argv)
