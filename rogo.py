@@ -45,15 +45,6 @@ if sys.version_info.major < 3:
     sys.exit(1)
 
 
-class Test(object):
-    def __init__(self):
-        self.desc = ""
-        self.seq = [] # sequence of commands
-
-    def __repr__(self):
-        return "<Test: %s, %d commands>" %  (self.desc, len(self.seq))
-
-
 class TestFailure(Exception):
     def __init__(self, msg):
         self.msg = msg
@@ -83,26 +74,28 @@ def send_cmds(program, ilines):
         program.stdin.close()
 
 
-def run_step(program, step):
-    send_cmds(program, step.ilines)
-    # send all the input lines:
-    (actual, errs) = program.communicate(timeout=5)
+def run_test(program: subprocess.Popen, test: TestDescription):
+    # send all the input lines (to stdin or a file):
+    send_cmds(program, test.ilines)
+    # listen for the response:
+    (actual, _errs) = program.communicate(timeout=5)
+    # TODO: handle errors in the `errs` string
     actual = [line.strip() for line in actual.splitlines()]
     actual = actual[SKIP_LINES:]
     # strip trailing blank lines
     while actual and actual[-1] == "":
         actual.pop()
-    if actual != step.olines:
+    if actual != test.olines:
         print()
-        print("test [%s] failed" % step.head)
+        print("test [%s] failed" % test.head)
         print("---- input ----")
-        for cmd in step.ilines:
+        for cmd in test.ilines:
             print(cmd)
-        print('\n'.join(step.body))
+        print(test.body)
         # print("---- expected results ----")
         # print('\n'.join(opcodes['out']))
         print("---- diff of expected vs actual ----")
-        diff = '\n'.join(list(difflib.Differ().compare(actual, step.olines)))
+        diff = '\n'.join(list(difflib.Differ().compare(actual, test.olines)))
         print(diff)
         raise TestFailure('output mismatch')
 
@@ -111,9 +104,9 @@ def run_tests(program_args, use_shell):
     num_passed = 0
     tests = orgtest.tests(TEST_PLAN)
     try:
-        for i, step in enumerate(tests):
+        for i, test in enumerate(tests):
             program = spawn(program_args, use_shell)
-            run_step(program, step)
+            run_test(program, test)
             # either it passed or threw exception
             print('.', end='')
             num_passed += 1
@@ -124,9 +117,9 @@ def run_tests(program_args, use_shell):
         print()
         print("%d of %d tests passed." % (num_passed, len(tests)))
         if isinstance(e, subprocess.TimeoutExpired):
-            print("Test [%s] timed out." % step.name)
+            print("Test [%s] timed out." % test.name)
         else:
-            print("Test [%s] failed." % step.name)
+            print("Test [%s] failed." % test.name)
 
 
 def find_target():
