@@ -35,9 +35,9 @@ def about():
 
 def list_challenges_data():
     return rel("""
-        select c.name, c.title,
+        select c.name, c.description as title,
           (select count(*) from tests t 
-            where t.chal_id = c.id) as num_tests
+            where t.chid = c.id) as num_tests
         from challenges c""")
 
 
