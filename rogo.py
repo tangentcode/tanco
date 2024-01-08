@@ -26,7 +26,7 @@ first feature.
 """
 import sys, os, errno, subprocess, difflib, time, traceback
 import orgtest
-from steps import TestStep
+from test_desc import TestDescription
 
 # where to write the input to the child program
 # (for cases where stdin is not available)
@@ -62,38 +62,6 @@ class TestFailure(Exception):
         return self.msg
 
 
-def parse_test(test):
-    lines = test.lines
-    while lines and lines[-1].strip() == "":
-        lines.pop()
-    opcodes = {
-        'title': None,
-        'doc': [],
-        'in': [],
-        'out': [],
-    }
-    for line in lines:
-        if line.startswith('#'): continue
-        if '#' in line:                # strip trailing comments
-            line = line[:line.find('#')]
-        sline = line.strip()
-        if sline.startswith('='):      # test title
-            opcodes['title'] = sline[2:]
-        elif sline.startswith(':'):    # test description
-            opcodes['doc'].append(sline)
-        elif sline.startswith('>'):    # input to send
-            opcodes['in'].append(sline[1:].lstrip())
-        else:                          # expected output
-            opcodes['out'].append(sline)
-    step = TestStep(
-        name=test.name,
-        head=opcodes['title'],
-        body='\n'.join(opcodes['doc']),
-        ilines=opcodes['in'],
-        olines=opcodes['out'])
-    return step
-
-
 def spawn(program_args, use_shell):
     return subprocess.Popen(program_args,
                             shell=use_shell,
@@ -115,8 +83,7 @@ def send_cmds(program, ilines):
         program.stdin.close()
 
 
-def run_test(program, test):
-    step = parse_test(test)
+def run_step(program, step):
     send_cmds(program, step.ilines)
     # send all the input lines:
     (actual, errs) = program.communicate(timeout=5)
@@ -144,9 +111,9 @@ def run_tests(program_args, use_shell):
     num_passed = 0
     tests = orgtest.tests(TEST_PLAN)
     try:
-        for i, test in enumerate(tests):
+        for i, step in enumerate(tests):
             program = spawn(program_args, use_shell)
-            run_test(program, test)
+            run_step(program, step)
             # either it passed or threw exception
             print('.', end='')
             num_passed += 1
@@ -157,9 +124,9 @@ def run_tests(program_args, use_shell):
         print()
         print("%d of %d tests passed." % (num_passed, len(tests)))
         if isinstance(e, subprocess.TimeoutExpired):
-            print("Test [%s] timed out." % test.name)
+            print("Test [%s] timed out." % step.name)
         else:
-            print("Test [%s] failed." % test.name)
+            print("Test [%s] failed." % step.name)
 
 
 def find_target():

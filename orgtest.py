@@ -36,8 +36,9 @@ following format:
 from __future__ import print_function
 from collections import namedtuple
 import os
+from test_desc import TestDescription
 
-TestDescription = namedtuple("TestDescription", ['name', 'lines'])
+OldTestDescription = namedtuple("TestDescription", ['name', 'lines'])
 
 
 class TestReaderStateMachine:
@@ -53,11 +54,10 @@ class TestReaderStateMachine:
             (0, '#+begin_src', 1, self.on_begin_test),
             (1, '#+end_src',   0, self.on_end_test)]
         self.state = 0
-        self.lineno = 0 # line count
-        self.io = None  # file object
+        self.lineno = 0
         self.next_name = self.prev_name = ""
-        self.test_names = []
-        self.tests = [] # collected tests
+        self.test_names = []  # only for unique names
+        self.tests = []       # collected (name, lines) descriptions
 
     def __call__(self, line):
         """
@@ -90,7 +90,7 @@ class TestReaderStateMachine:
         assert self.next_name != self.prev_name, (
             "missing or duplicate name for test on line {0}"
             .format(self.lineno))
-        self.tests.append(TestDescription(self.next_name, []))
+        self.tests.append(OldTestDescription(self.next_name, []))
         self.focus = self.tests[-1].lines
         self.prev_name = self.next_name
 
@@ -111,14 +111,46 @@ class TestReaderStateMachine:
         return self.tests
 
 
+def parse_test(test):
+    lines = test.lines
+    while lines and lines[-1].strip() == "":
+        lines.pop()
+    opcodes = {
+        'title': None,
+        'doc': [],
+        'in': [],
+        'out': [],
+    }
+    for line in lines:
+        if line.startswith('#'): continue
+        if '#' in line:                # strip trailing comments
+            line = line[:line.find('#')]
+        sline = line.strip()
+        if sline.startswith('='):      # test title
+            opcodes['title'] = sline[2:]
+        elif sline.startswith(':'):    # test description
+            opcodes['doc'].append(sline)
+        elif sline.startswith('>'):    # input to send
+            opcodes['in'].append(sline[1:].lstrip())
+        else:                          # expected output
+            opcodes['out'].append(sline)
+    step = TestDescription(
+        name=test.name,
+        head=opcodes['title'],
+        body='\n'.join(opcodes['doc']),
+        ilines=opcodes['in'],
+        olines=opcodes['out'])
+    return step
+
+
 def tests(path=None):
     """
-    Convenience function to instantiate a TestReaderStateMatchine
+    Convenience function to instantiate a TestReaderStateMachine
     and invoke .extract_tests on the given path.
     """
     if path is None:
         path = os.path.join(os.path.dirname(__file__), 'testplan.org')
-    return TestReaderStateMachine().extract_tests(path)
+    return [parse_test(x) for x in TestReaderStateMachine().extract_tests(path)]
 
 
 def main():

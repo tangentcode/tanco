@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 @dataclass
-class TestStep:
+class TestDescription:
     name: str
     head: str
     body: str
