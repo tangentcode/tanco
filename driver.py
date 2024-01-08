@@ -8,7 +8,7 @@ import webbrowser
 
 
 class RogoDriver(cmd.Cmd):
-    prompt = ""
+    prompt = "rogo> "
     completekey = ''
     cmdqueue = ''
 
@@ -40,6 +40,9 @@ class RogoDriver(cmd.Cmd):
 
 if __name__ == '__main__':
     d = RogoDriver()
+    if "-q" in sys.argv:
+        sys.argv.remove('-q')
+        d.prompt = ""
     if len(sys.argv) > 1: d.onecmd(' '.join(sys.argv[1:]))
     else: d.cmdloop()
     sys.stderr.close()

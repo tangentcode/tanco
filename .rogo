@@ -1,7 +1,7 @@
 {
   "targets": {
     "main": {
-      "args": ["driver.py"],
+      "args": ["driver.py", "-q"],
       "shell": true
     }
   }
