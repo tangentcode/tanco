@@ -5,7 +5,9 @@ rogo.py, it means rogo can't find your code!
 
 Your first step is to write a *console-mode* program
 (one that does absolutely nothing!) and tell rogo
-where to find it:
+where to find it.
+
+This is configured in your .rogo file, but you can also do this:
 
     ./rogo.py [/path/to/your-program] [arguments]
 
@@ -14,7 +16,7 @@ you need command line arguments, create a wrapper program.
 The default path is "./my-program".
 
 You can pass extra arguments that will be passed to the
-guest your-program program.
+target program.
 
 If you need more help with setting up, try reading:
 https://github.com/LearnProgramming/learntris/wiki/Getting-Set-Up
@@ -24,7 +26,7 @@ Once rogo is able to launch your program, this message
 will be replaced with instructions for implementing your
 first feature.
 """
-import sys, os, errno, subprocess, difflib, time, traceback
+import sys, os, errno, subprocess, difflib, traceback, json
 import orgtest
 from test_desc import TestDescription
 
@@ -123,10 +125,32 @@ def run_tests(program_args, use_shell):
 
 
 def find_target():
+    """returns (program_args, use_shell)"""
     default = "./my-program"
-    program_args = sys.argv[1:] if len(sys.argv) >= 2 else [default]
-    if "--shell" in program_args:
-        program_args.remove("--shell")
+    use_shell = False
+    if len(sys.argv) > 1:
+        program_args = sys.argv[1:]
+        if "--shell" in program_args:
+            program_args.remove("--shell")
+            use_shell = True
+    elif os.path.exists('.rogo'):
+        try:
+            data = json.load(open('.rogo'))['targets']['main']
+        except json.decoder.JSONDecodeError as e:
+            print("Error reading .rogo file:", e)
+            sys.exit()
+        except KeyError:
+            print("`targets/main` found in the .rogo file.")
+            sys.exit()
+        if 'args' not in data:
+            print("`targets/main` must specify a list of program arguments.")
+            sys.exit()
+        program_args = data['args']  # TODO: check that it's actually a list
+        use_shell = data.get('shell', False)  # TODO: check that it's actually a bool
+    else:
+        program_args = [default]
+
+    if use_shell:
         return program_args, True
     elif os.path.exists(program_args[0]):
         return program_args, False
