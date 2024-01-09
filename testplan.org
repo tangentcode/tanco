@@ -1,4 +1,4 @@
-#+title: rogo client test suite
+#+title: rogo self tests
 #+name: rogo
 #+url: https://rogo.tangentcode.com/rogo
 
@@ -25,9 +25,9 @@
 #+name: io.c
 #+begin_src
 > challenges
-["rogo", "rogo self tests"]
 ["learntris", "a famous falling blocks game"]
 ["other", "some other course"]
+["rogo", "rogo self tests"]
 = challenges : list available challenges
 #+end_src
 
