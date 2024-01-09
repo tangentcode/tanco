@@ -2,10 +2,11 @@
 """
 command-line driver for rogo client.
 """
-import sys, cmd as cmdlib, json
+import os, sys, cmd as cmdlib, json
 import webbrowser
 
 import runner
+import orgtest
 from client import RogoClient
 
 
@@ -25,6 +26,16 @@ class RogoDriver(cmdlib.Cmd):
         webbrowser.open(self.client.url + '/auth/login?pre=' + pre)
         jwt = self.client.get_jwt(pre=pre)
         print("json web token: %s" % jwt)
+
+    def do_import(self, arg):
+        """Import a challenge"""
+        if not arg:
+            print("usage: import <challenge.org>")
+            return
+        if os.path.exists(arg):
+            tests = orgtest.tests(arg)
+            for t in tests:
+                print(t.name)
 
     def do_test(self, args):
         """Run the tests"""

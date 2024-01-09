@@ -1,4 +1,5 @@
 #+title: rogo client test suite
+#+name: rogo
 #+url: https://rogo.tangentcode.com/rogo
 
 # This file is created with org-mode, an awesome outliner and

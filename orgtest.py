@@ -36,7 +36,7 @@ following format:
 from __future__ import print_function
 from collections import namedtuple
 import os
-from test_desc import TestDescription
+from test_desc import TestDescription, Challenge
 
 OldTestDescription = namedtuple("TestDescription", ['name', 'lines'])
 
@@ -46,24 +46,21 @@ class TestReaderStateMachine:
     A simple finite state machine to extract tests from an outline.
     """
     def __init__(self):
-        self.states = [
+        self.states = [ # NOTE: this is ordered and first field should == index
             (0, self.do_nothing),
-            (1, self.on_test_code)]
+            (1, self.on_test_code),
+            (2, self.on_meta_line)]  # initial state for reading meta-data
         self.transitions = [
             (0, '#+name:', 0, self.on_test_name),
             (0, '#+begin_src', 1, self.on_begin_test),
             (1, '#+end_src',   0, self.on_end_test)]
-        self.state = 0
+        self.state = 2
         self.lineno = 0
         self.next_name = self.prev_name = ""
         self.test_names = []  # only for unique names
         self.tests = []       # collected (name, lines) descriptions
-
-    def __call__(self, line):
-        """
-        Act as a callable, allowing map() over an input stream.
-        """
-        self.on_line(line)
+        self.challenge = Challenge()
+        self.focus = None     # used to collect lines for current test
 
     # -- event handlers -----------------------------------------
 
@@ -71,14 +68,29 @@ class TestReaderStateMachine:
         self.lineno += 1
         match = [row[2:] for row in self.transitions 
                  if row[0] == self.state and line.startswith(row[1])]
-        if match: # match :: [( to_state, method )] of len 1
+        if match:  # match :: [( to_state, method )] of len 1
             self.state = match[0][0]
             match[0][1](line)
         else: self.states[self.state][1](line)
 
     def do_nothing(self, line):
         pass
-    
+
+    def on_meta_line(self, line):
+        c = self.challenge
+        if line.startswith('#+title:'):
+            c.title = line.split(':')[1].strip()
+        elif line.startswith('#+url:'):
+            c.url = line.split(' ', 1)[1].strip()
+        elif line.startswith('#+name:'):
+            c.name = line.split(' ', 1)[1].strip()
+        else:
+            print(f'unexpected line {line!r} on line {self.lineno}')
+            print('expect #+title:, #+url:, #+name: lines at start of file')
+            exit()
+        if c.title and c.url and c.name:
+            self.state = 0
+
     def on_test_name(self, line):
         self.next_name = line.split(":")[1].strip()
         assert self.next_name not in self.test_names, (
@@ -102,13 +114,14 @@ class TestReaderStateMachine:
 
     # -- main public interface ----------------------------------
 
-    def extract_tests(self, path):
+    def parse(self, path):
         """
         Generates a sequence of TestDescription named tuples:
         Format is: (name:Str, lines:[Str])
         """
-        for line in open(path): self(line)
-        return self.tests
+        for line in open(path): self.on_line(line)
+        self.challenge.tests = [parse_test(x) for x in self.tests]
+        return self.challenge
 
 
 def parse_test(test):
@@ -143,6 +156,10 @@ def parse_test(test):
     return step
 
 
+def read_challenge(path):
+    return TestReaderStateMachine().parse(path)
+
+
 def tests(path=None):
     """
     Convenience function to instantiate a TestReaderStateMachine
@@ -150,7 +167,7 @@ def tests(path=None):
     """
     if path is None:
         path = os.path.join(os.path.dirname(__file__), 'testplan.org')
-    return [parse_test(x) for x in TestReaderStateMachine().extract_tests(path)]
+    return read_challenge(path).tests
 
 
 def main():
