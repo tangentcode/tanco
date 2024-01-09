@@ -8,6 +8,7 @@ import webbrowser
 import runner
 import orgtest
 from client import RogoClient
+import database as db
 
 
 class RogoDriver(cmdlib.Cmd):
@@ -27,15 +28,43 @@ class RogoDriver(cmdlib.Cmd):
         jwt = self.client.get_jwt(pre=pre)
         print("json web token: %s" % jwt)
 
+    def do_delete(self, arg):
+        """Delete a challenge"""
+        if not arg:
+            print("Usage: `delete <challenge name>`")
+            return
+        old = db.query('select rowid as id from challenges where name=?', [arg])
+        if not old:
+            print(f'Sorry. Challenge "{arg}" does not exist in the database.')
+            return
+        old = old[0]['id']
+        tx = db.begin()
+        tx.execute('delete from tests where chid=?', [old])
+        # TODO: tx.execute('delete from progress where chid=?', [old])
+        tx.execute('delete from challenges where rowid=?', [old])
+        tx.commit()
+        print(f'Challenge "{arg}" deleted.')
+
     def do_import(self, arg):
         """Import a challenge"""
         if not arg:
             print("usage: import <challenge.org>")
             return
         if os.path.exists(arg):
-            tests = orgtest.tests(arg)
-            for t in tests:
-                print(t.name)
+            c = orgtest.read_challenge(arg)
+            if db.query('select * from challenges where name=?', [c.name]):
+                print(f'Sorry, challenge "{c.name}" already exists in the database.')
+                print(f'Use `rogo delete {c.name}` if you want to replace it.')
+                return
+            tx = db.begin()
+            cur = tx.execute('insert into challenges (name, title, url) values (?, ?, ?)',
+                             [c.name, c.title, c.url])
+            chid = cur.lastrowid
+            for t in c.tests:
+                tx.execute('insert into tests (chid, name, head, body, ilines, olines) values (?, ?, ?, ?, ?, ?)',
+                           [chid, t.name, t.head, t.body, '\n'.join(t.ilines), '\n'.join(t.olines)])
+            tx.commit()
+            print(f'Challenge "{c.name}" imported with {len(c.tests)} tests.')
 
     def do_test(self, args):
         """Run the tests"""

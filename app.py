@@ -2,7 +2,7 @@ import flask
 import asyncio
 import jwt as jwtlib
 
-from database import fetch
+from database import query
 
 app = flask.Flask(__name__)
 ok = None
@@ -26,7 +26,7 @@ def about():
 
 
 def list_challenges_data():
-    return fetch("""
+    return query("""
         select c.name, c.title,
           (select count(*) from tests t 
             where t.chid = c.id) as num_tests
