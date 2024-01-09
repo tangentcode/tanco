@@ -1,4 +1,5 @@
 {
+  "challenge_url": "https://rogo.tangentcode.com/rogo",
   "targets": {
     "main": {
       "args": ["driver.py", "shell", "-q"],

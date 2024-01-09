@@ -28,23 +28,32 @@ first feature.
 """
 import sys, os, errno, subprocess, difflib, traceback, json
 import orgtest
-from model import TestDescription
+from model import TestDescription, Config, Challenge
+import database as db
 
-# where to write the input to the child program
-# (for cases where stdin is not available)
-INPUT_PATH = os.environ.get("INPUT_PATH", "")
 
-# skip this many lines of input before sending
-# for cases where the language prints a header
-# that can't be suppressed. (e.g. Godot4 - you can turn
-# off the header, but doing so turns off all prints!)
-SKIP_LINES = int(os.environ.get("SKIP_LINES", "0"))
-
-TEST_PLAN = os.environ.get("TEST_PLAN", "testplan.org")
-
-if sys.version_info.major < 3:
-    print("Sorry, rogo requires Python 3.x.")
-    sys.exit(1)
+def load_config() -> Config:
+    res = Config()
+    res.input_path = os.environ.get("INPUT_PATH", "")
+    res.skip_lines = int(os.environ.get("SKIP_LINES", "0"))
+    res.test_plan = os.environ.get("TEST_PLAN")
+    if os.path.exists('.rogo'):
+        try:
+            data = json.load(open('.rogo'))
+            target = data['targets']['main']
+        except json.decoder.JSONDecodeError as e:
+            print("Error reading .rogo file:", e)
+            sys.exit()
+        except KeyError:
+            print("`targets/main` found in the .rogo file.")
+            sys.exit()
+        if 'args' not in target:
+            print("`targets/main` must specify a list of program arguments.")
+            sys.exit()
+        res.challenge_url = data['challenge_url']
+        res.program_args = target['args']  # TODO: check that it's actually a list
+        res.use_shell = target.get('shell', False)  # TODO: check that it's actually a bool
+    return res
 
 
 class TestFailure(Exception):
@@ -55,6 +64,10 @@ class TestFailure(Exception):
         return self.msg
 
 
+class NoTestPlanError(Exception):
+    pass
+
+
 def spawn(program_args, use_shell):
     return subprocess.Popen(program_args,
                             shell=use_shell,
@@ -63,9 +76,9 @@ def spawn(program_args, use_shell):
                             stdout=subprocess.PIPE)
 
 
-def send_cmds(program, ilines):
-    if INPUT_PATH:
-        cmds = open(INPUT_PATH, "w")
+def send_cmds(cfg: Config, program, ilines):
+    if cfg.input_path:
+        cmds = open(cfg.input_path, "w")
         for cmd in ilines:
             cmds.write(cmd + "\n")
         cmds.close()
@@ -76,14 +89,14 @@ def send_cmds(program, ilines):
         program.stdin.close()
 
 
-def run_test(program: subprocess.Popen, test: TestDescription):
+def run_test(cfg: Config, program: subprocess.Popen, test: TestDescription):
     # send all the input lines (to stdin or a file):
-    send_cmds(program, test.ilines)
+    send_cmds(cfg, program, test.ilines)
     # listen for the response:
     (actual, _errs) = program.communicate(timeout=5)
     # TODO: handle errors in the `errs` string
     actual = [line.strip() for line in actual.splitlines()]
-    actual = actual[SKIP_LINES:]
+    actual = actual[cfg.skip_lines:]
     # strip trailing blank lines
     while actual and actual[-1] == "":
         actual.pop()
@@ -102,13 +115,23 @@ def run_test(program: subprocess.Popen, test: TestDescription):
         raise TestFailure('output mismatch')
 
 
-def run_tests(program_args, use_shell):
+def get_challenge(cfg: Config) -> Challenge:
+    if cfg.test_plan:
+        return orgtest.read_challenge(cfg.test_plan)
+    elif cfg.challenge_url:
+        return db.fetch_challenge(cfg.challenge_url)
+    else:
+        raise NoTestPlanError()
+
+
+def run_tests(cfg: Config):
     num_passed = 0
-    tests = orgtest.tests(TEST_PLAN)
+    challenge = get_challenge(cfg)
+    tests = challenge.tests
     try:
         for i, test in enumerate(tests):
-            program = spawn(program_args, use_shell)
-            run_test(program, test)
+            program = spawn(cfg.program_args, cfg.use_shell)
+            run_test(cfg, program, test)
             # either it passed or threw exception
             print('.', end='')
             num_passed += 1
@@ -124,53 +147,35 @@ def run_tests(program_args, use_shell):
             print("Test [%s] failed." % test.name)
 
 
-def find_target(argv: [str]):
-    """returns (program_args, use_shell)"""
-    default = "./my-program"
-    use_shell = False
+def find_target(cfg: Config, argv: [str]) -> Config:
+    """returns the config, possibly overridden by command line args"""
     if len(argv) > 1:
-        program_args = argv[1:]
-        if "--shell" in program_args:
-            program_args.remove("--shell")
-            use_shell = True
-    elif os.path.exists('.rogo'):
-        try:
-            data = json.load(open('.rogo'))['targets']['main']
-        except json.decoder.JSONDecodeError as e:
-            print("Error reading .rogo file:", e)
-            sys.exit()
-        except KeyError:
-            print("`targets/main` found in the .rogo file.")
-            sys.exit()
-        if 'args' not in data:
-            print("`targets/main` must specify a list of program arguments.")
-            sys.exit()
-        program_args = data['args']  # TODO: check that it's actually a list
-        use_shell = data.get('shell', False)  # TODO: check that it's actually a bool
-    else:
-        program_args = [default]
-
-    if use_shell:
-        return program_args, True
-    elif os.path.exists(program_args[0]):
-        return program_args, False
-    elif program_args[0] == default:
+        cfg.program_args = argv[1:]
+        if "--shell" in cfg.program_args:
+            cfg.program_args.remove("--shell")
+            cfg.use_shell = True
+    if cfg.use_shell or os.path.exists(cfg.program_args[0]):
+        return cfg
+    elif cfg.program_args[0] == cfg.default_target():
         print(__doc__)
-        raise FileNotFoundError(default)
-    else:
-        raise FileNotFoundError("%s" % program_args[0])
+    raise FileNotFoundError(cfg.program_args[0])
 
 
 def main(argv: [str]):
+    cfg = load_config()
     try:
-        cmdline, use_shell = find_target(argv)
+        cfg = find_target(cfg, argv)
     except FileNotFoundError as e:
         print('File not found:', e)
     else:
+        cmdline = cfg.program_args
         cmd = cmdline[0]
         try:
             try:
-                run_tests(cmdline, use_shell)
+                run_tests(cfg)
+            except NoTestPlanError as e:
+                print('No challenge selected.')
+                print('Use `rogo init` or set TEST_PLAN environment variable.')
             except EnvironmentError as e:
                 if e.errno in [errno.EPERM, errno.EACCES]:
                     print(); print(e)

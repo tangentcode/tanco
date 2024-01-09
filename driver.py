@@ -20,6 +20,8 @@ class RogoDriver(cmdlib.Cmd):
         super().__init__()
         self.client = RogoClient()
 
+    # -- global database state --------------------------------
+
     def do_login(self, _arg):
         """Login to the server"""
         pre = self.client.get_pre_token()
@@ -66,14 +68,23 @@ class RogoDriver(cmdlib.Cmd):
             tx.commit()
             print(f'Challenge "{c.name}" imported with {len(c.tests)} tests.')
 
-    def do_test(self, args):
-        """Run the tests"""
-        runner.main(['rogo']+[x for x in args.split(' ') if x != ''])
-
     def do_challenges(self, _arg):
         """List challenges"""
         for x in self.client.list_challenges():
             print(json.dumps([x['name'], x['title']]))
+
+    # -- local project config ---------------------------------
+
+    def do_init(self, arg):
+        print('TODO: rogo init')
+        print('For now, please copy the main .rogo file from github:')
+        print('  https://raw.githubusercontent.com/tangentstorm/rogo/main/.rogo')
+        print('and modify it yourself.')
+
+    def do_test(self, arg):
+        """Run the tests"""
+        runner.main(['rogo']+[x for x in arg.split(' ') if x != ''])
+
 
     def do_q(self, _arg):
         """Exit the shell"""
