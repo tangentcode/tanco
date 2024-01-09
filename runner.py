@@ -28,7 +28,7 @@ first feature.
 """
 import sys, os, errno, subprocess, difflib, traceback, json
 import orgtest
-from test_desc import TestDescription
+from model import TestDescription
 
 # where to write the input to the child program
 # (for cases where stdin is not available)

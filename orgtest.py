@@ -36,7 +36,7 @@ following format:
 from __future__ import print_function
 from collections import namedtuple
 import os
-from test_desc import TestDescription, Challenge
+from model import TestDescription, Challenge
 
 OldTestDescription = namedtuple("TestDescription", ['name', 'lines'])
 
