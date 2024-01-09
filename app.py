@@ -1,9 +1,9 @@
 import flask
-import sqlite3
 import asyncio
 import jwt as jwtlib
 
-SDB_PATH = 'rogo.sdb'  # TODO: make this configurable
+from database import fetch
+
 app = flask.Flask(__name__)
 ok = None
 
@@ -13,14 +13,6 @@ queues = {}
 
 JWT_OBJ = jwtlib.JWT()
 JWT_KEY = jwtlib.jwk_from_pem(open('rogo_auth_key.pem', 'rb').read())
-
-
-def rel(sql):
-    dbc = sqlite3.connect(SDB_PATH)
-    cur = dbc.execute(sql)
-    cols = [x[0] for x in cur.description]
-    return [{k: v for k, v in zip(cols, vals)}
-            for vals in cur.fetchall()]
 
 
 @app.route('/')
@@ -34,7 +26,7 @@ def about():
 
 
 def list_challenges_data():
-    return rel("""
+    return fetch("""
         select c.name, c.title,
           (select count(*) from tests t 
             where t.chid = c.id) as num_tests
