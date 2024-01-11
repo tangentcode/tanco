@@ -5,10 +5,8 @@ command-line driver for rogo client.
 import os, sys, cmd as cmdlib, json
 import webbrowser
 
-import runner
-import orgtest
-from client import RogoClient
-import database as db
+from . import runner, orgtest, database as db
+from .client import RogoClient
 
 
 class RogoDriver(cmdlib.Cmd):

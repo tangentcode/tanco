@@ -33,10 +33,10 @@ following format:
   these special characters (including itself).
 
 """
-from __future__ import print_function
 from collections import namedtuple
 import os
-from model import TestDescription, Challenge
+
+from .model import TestDescription, Challenge
 
 OldTestDescription = namedtuple("TestDescription", ['name', 'lines'])
 

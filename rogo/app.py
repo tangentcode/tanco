@@ -5,7 +5,7 @@ import asyncio
 import quart
 import jwt as jwtlib
 
-from database import query
+from .database import query
 
 app = quart.Quart(__name__)
 ok = None

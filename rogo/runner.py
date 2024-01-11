@@ -27,9 +27,9 @@ will be replaced with instructions for implementing your
 first feature.
 """
 import sys, os, errno, subprocess, difflib, traceback, json
-import orgtest
-from model import TestDescription, Config, Challenge
-import database as db
+
+from . import orgtest, database as db
+from .model import TestDescription, Config, Challenge
 
 
 def load_config() -> Config:

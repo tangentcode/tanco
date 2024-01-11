@@ -1,5 +1,5 @@
 import sqlite3
-from model import Challenge, TestDescription
+from .model import Challenge, TestDescription
 
 SDB_PATH = 'rogo.sdb'  # TODO: make this configurable
 

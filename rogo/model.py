@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 
+
 @dataclass
 class TestDescription:
     name: str = ''
@@ -7,6 +8,7 @@ class TestDescription:
     body: str = ''
     ilines: [str] = field(default_factory=list)
     olines: [str] = field(default_factory=list)
+
 
 @dataclass
 class Challenge:
