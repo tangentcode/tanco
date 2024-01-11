@@ -1,13 +1,14 @@
 import requests
+import os
 
 
 class RogoClient:
     """
-    Clent for the Rogo API
+    Client for the Rogo API
     """
 
-    def __init__(self, url='http://localhost:5000'):
-        self.url = url
+    def __init__(self, url=None):
+        self.url = url or os.environ.get('ROGO_SERVER', 'https://rogo.tangentcode.com')
 
     def post(self, url, data):
         url = url if url.startswith('/') else '/' + url

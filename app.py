@@ -1,10 +1,13 @@
-import flask
+import random
+import string
 import asyncio
+
+import quart
 import jwt as jwtlib
 
 from database import query
 
-app = flask.Flask(__name__)
+app = quart.Quart(__name__)
 ok = None
 
 # this maps pre-tokens to async queues that
@@ -16,19 +19,19 @@ JWT_KEY = jwtlib.jwk_from_pem(open('rogo_auth_key.pem', 'rb').read())
 
 
 @app.route('/')
-def index():
-    return flask.render_template('index.html')
+async def index():
+    return await quart.render_template('index.html')
 
 
 @app.route('/about')
-def about():
-    return flask.render_template('about.html')
+async def about():
+    return await quart.render_template('about.html')
 
 
 def list_challenges_data():
     return query("""
         select c.name, c.title,
-          (select count(*) from tests t 
+          (select count(*) from tests t
             where t.chid = c.id) as num_tests
         from challenges c""")
 
@@ -39,30 +42,30 @@ def list_challenges_json():
 
 
 @app.route('/c')
-def list_challenges():
-    return flask.render_template('challenges.html',
-                                 data=list_challenges_data())
+async def list_challenges():
+    data = list_challenges_data()
+    return await quart.render_template('challenges.html', data=data)
 
 
 @app.route('/c/<name>')
-def show_challenge(name):
+async def show_challenge(name):
     data = [x for x in list_challenges_data()
             if x['name'] == name]
-    flask.abort(404) if not data else ok
-    return flask.render_template('challenge.html', data=data[0])
+    quart.abort(404) if not data else ok
+    return await quart.render_template('challenge.html', data=data[0])
 
 
 @app.route('/login', methods=['GET'])
-def get_login():
-    return flask.render_template('login.html')
+async def get_login():
+    return await quart.render_template('login.html')
 
 
 # == Authentication for Command Line Client ===
 
 @app.route('/auth/login', methods=['GET'])
-def get_auth_login():
-    data = {'pre': flask.request.args.get('pre', '??')}
-    return flask.render_template('login.html', **data)
+async def get_auth_login():
+    data = {'pre': quart.request.args.get('pre', '??')}
+    return await quart.render_template('login.html', **data)
 
 
 @app.route('/auth/pre', methods=['GET'])
@@ -74,10 +77,14 @@ def get_auth_pre():
     """
 
 
+def make_pre_token():
+    res = ''.join(random.choice(string.ascii_letters) for _ in range(32))
+    return make_pre_token() if res in queues else res
+
+
 @app.route('/auth/pre', methods=['POST'])
 def post_auth_pre():
-    pre = 'PRE' # TODO: random string
-    assert pre not in queues, "repeated pre-token"
+    pre = make_pre_token()
     queues[pre] = asyncio.Queue()
     return {'token': pre}
 
@@ -94,18 +101,21 @@ def get_auth_jwt():
 
 @app.route('/auth/jwt', methods=['POST'])
 async def post_auth_jwt():
-    req = flask.request
-    pre = req.json.get('pre') if req.is_json else req.form.get('pre')
-    if pre not in queues:
-        return f"pre-token not found: {pre}"
+    req = quart.request
+    pre = (await req.json).get('pre') if req.is_json else (await req.form).get('pre')
+    assert pre in queues, f"pre-token not found: {pre}"
+    print(f'awaiting jwt for pre[{pre}]:')
     jwt = await queues[pre].get()
+    del queues[pre]
+    print(f'jwt for pre[{pre}]:', jwt)
     return {'token': f'{pre}->{jwt}'}
 
 
 @app.route('/auth/success', methods=['POST'])
-def post_auth_success():
-    pre = flask.request.form.get('preToken')
-    ac0 = flask.request.form.get('accessToken')
+async def post_auth_success():
+    frm = await quart.request.form
+    pre = frm.get('preToken')
+    ac0 = frm.get('accessToken')
     acc = JWT_OBJ.decode(ac0, do_verify=False)
     # TODO: validate acc against auth provider (firebase)
     # (otherwise attacker could just send any token)
@@ -114,11 +124,13 @@ def post_auth_success():
     jwt = JWT_OBJ.encode(data, JWT_KEY, alg='RS256')
     try:
         q = queues[pre]
+        print("queues[pre]:", q)
+        print("jwt:", jwt)
         q.put_nowait(jwt)
     except KeyError:
-        return f"pre-token not found: {pre}"
+        return f"pre-token not found: {pre}", 500
     except asyncio.QueueFull:
-        return "pre-token already used"
+        return "pre-token already used", 500
     return """
     <h1>Success!</h1>
     <p>You have successfully logged in.</p>
