@@ -111,7 +111,7 @@ def show_help():
         print("  %-16s:  %s" % (cmd, doc))
 
 
-if __name__ == '__main__':
+def main():
     d = RogoDriver()
     if "-q" in sys.argv:
         sys.argv.remove('-q')
@@ -122,3 +122,7 @@ if __name__ == '__main__':
         else: d.onecmd(' '.join(sys.argv[1:]))
     else: show_help()
     sys.stderr.close()   # suppress warning on timeout when self-testing
+
+
+if __name__ == '__main__':
+    main()
