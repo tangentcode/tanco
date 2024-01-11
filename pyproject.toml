@@ -1,8 +1,3 @@
-[build-system]
-requires = ["setuptools"]
-build-backend = "setuptools.build_meta"
-
-
 [project]
 name = "rogo"
 version = "0.1.0"
@@ -13,3 +8,7 @@ rogo = "rogo.driver:main"
 
 [project.license]
 file = "LICENSE"
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
