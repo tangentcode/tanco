@@ -39,7 +39,7 @@ class Config:
     attempt: str = ''
 
     @staticmethod
-    def default_target(self):
+    def default_target():
         return DEFAULT_TARGET
 
     def to_json(self):
