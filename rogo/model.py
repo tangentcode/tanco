@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+import json
 
 
 @dataclass
@@ -35,9 +36,17 @@ class Config:
     # that can't be suppressed. (e.g. Godot4 - you can turn
     # off the header, but doing so turns off all prints!)
     skip_lines: int = 0
-    challenge_url: str = ''
+    attempt: str = ''
 
     @staticmethod
     def default_target(self):
         return DEFAULT_TARGET
 
+    def to_json(self):
+        data = {
+            'attempt': self.attempt,
+            'targets': {
+                'main': {
+                    'args': self.program_args,
+                    'shell': self.use_shell}}}
+        return json.dumps(data, indent=2)
