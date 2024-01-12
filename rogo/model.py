@@ -13,7 +13,7 @@ class TestDescription:
 @dataclass
 class Challenge:
     name: str = ''
-    url: str = ''
+    server: str = ''
     title: str = ''
     tests: [TestDescription] = field(default_factory=list)
 

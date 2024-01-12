@@ -15,7 +15,7 @@ def query(sql, *a, **kw):
 
 def commit(sql, *a, **kw):
     """commit a transaction to the database"""
-    dbc = sqlite3.connect(SDB_PATH)
+    dbc = begin()
     cur = dbc.execute(sql, *a, **kw)
     dbc.commit()
     return cur.lastrowid
@@ -24,6 +24,7 @@ def commit(sql, *a, **kw):
 def begin():
     """return a connection so you can begin a transaction"""
     tx = sqlite3.connect(SDB_PATH)
+    tx.execute('PRAGMA foreign_keys = ON')
     return tx
 
 

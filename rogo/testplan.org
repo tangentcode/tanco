@@ -1,6 +1,6 @@
 #+title: rogo self tests
 #+name: rogo
-#+url: https://rogo.tangentcode.com/rogo
+#+server: https://rogo.tangentcode.com/
 
 # This file is created with org-mode, an awesome outliner and
 # personal information manager for emacs. In org-mode, this file

@@ -80,15 +80,15 @@ class TestReaderStateMachine:
         c = self.challenge
         if line.startswith('#+title:'):
             c.title = line.split(':')[1].strip()
-        elif line.startswith('#+url:'):
-            c.url = line.split(' ', 1)[1].strip()
+        elif line.startswith('#+server:'):
+            c.server = line.split(' ', 1)[1].strip()
         elif line.startswith('#+name:'):
             c.name = line.split(' ', 1)[1].strip()
         else:
             print(f'unexpected line {line!r} on line {self.lineno}')
-            print('expect #+title:, #+url:, #+name: lines at start of file')
+            print('expect #+title:, #+server:, #+name: lines at start of file')
             exit()
-        if c.title and c.url and c.name:
+        if c.title and c.server and c.name:
             self.state = 0
 
     def on_test_name(self, line):

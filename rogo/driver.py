@@ -33,7 +33,7 @@ class RogoDriver(cmdlib.Cmd):
         if not arg:
             print("Usage: `delete <challenge name>`")
             return
-        old = db.query('select rowid as id from challenges where name=?', [arg])
+        old = db.query('select id from challenges where name=?', [arg])
         if not old:
             print(f'Sorry. Challenge "{arg}" does not exist in the database.')
             return
@@ -41,7 +41,7 @@ class RogoDriver(cmdlib.Cmd):
         tx = db.begin()
         tx.execute('delete from tests where chid=?', [old])
         # TODO: tx.execute('delete from progress where chid=?', [old])
-        tx.execute('delete from challenges where rowid=?', [old])
+        tx.execute('delete from challenges where id=?', [old])
         tx.commit()
         print(f'Challenge "{arg}" deleted.')
 
@@ -52,13 +52,18 @@ class RogoDriver(cmdlib.Cmd):
             return
         if os.path.exists(arg):
             c = orgtest.read_challenge(arg)
-            if db.query('select * from challenges where name=?', [c.name]):
+            if not (sids := db.query('select id from servers where url=?', [c.server])):
+                print(f'Sorry, server "{c.server}" is not in the database.')
+                return
+            sid = sids[0]['id']
+            print('sid is:', sid)
+            if db.query('select * from challenges where sid=? and name=?', [sid, c.name]):
                 print(f'Sorry, challenge "{c.name}" already exists in the database.')
                 print(f'Use `rogo delete {c.name}` if you want to replace it.')
                 return
             tx = db.begin()
-            cur = tx.execute('insert into challenges (name, title, url) values (?, ?, ?)',
-                             [c.name, c.title, c.url])
+            cur = tx.execute('insert into challenges (sid, name, title) values (?, ?, ?)',
+                             [sid, c.name, c.title])
             chid = cur.lastrowid
             for t in c.tests:
                 tx.execute('insert into tests (chid, name, head, body, ilines, olines) values (?, ?, ?, ?, ?, ?)',
