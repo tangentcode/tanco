@@ -1,7 +1,6 @@
 #!/usr/bin/env python
-"""
-If you're seeing this message when you tried to run
-rogo.py, it means rogo can't find your code!
+USER_HELP = """
+Rogo can't find your code!
 
 Your first step is to write a *console-mode* program
 (one that does absolutely nothing!) and tell rogo
@@ -9,7 +8,7 @@ where to find it.
 
 This is configured in your .rogo file, but you can also do this:
 
-    ./rogo.py [/path/to/your-program] [arguments]
+    rogo test [/path/to/your-program] [arguments]
 
 The path should refer to a physical file on disk, so if
 you need command line arguments, create a wrapper program.
@@ -157,7 +156,7 @@ def find_target(cfg: Config, argv: [str]) -> Config:
     if cfg.use_shell or os.path.exists(cfg.program_args[0]):
         return cfg
     elif cfg.program_args[0] == cfg.default_target():
-        print(__doc__)
+        print(USER_HELP)
     raise FileNotFoundError(cfg.program_args[0])
 
 
