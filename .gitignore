@@ -1,5 +1,6 @@
 # sqlite database
-.rogo.sdb
+rogo.sdb
+
 # private key for server
 rogo_auth_key.*
 
