@@ -4,6 +4,7 @@ import json
 
 @dataclass
 class TestDescription:
+    id: int = 0
     name: str = ''
     head: str = ''
     body: str = ''
@@ -13,6 +14,8 @@ class TestDescription:
 
 @dataclass
 class Challenge:
+    id: int = 0
+    sid: int = 0
     name: str = ''
     server: str = ''
     title: str = ''

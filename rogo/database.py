@@ -34,14 +34,12 @@ def chomp(lines):
     return lines[:-1] if lines[-1] == '' else lines
 
 
-def fetch_challenge(url: str):
+def fetch_challenge(chid: int):
     """fetch a challenge from the database"""
-    rows = query('select * from challenges where url=?', [url])
+    rows = query('select * from challenges where id=?', [chid])
     if not rows:
-        raise LookupError(f'Challenge "{url}" not found in the database.')
-    row = rows[0]
-    chid = row.pop('id')
-    res = Challenge(**row)
+        raise LookupError(f'Challenge "{chid}" not found in the database.')
+    res = Challenge(**rows[0])
     for t in query('select * from tests where chid=?', [chid]):
         t.pop('id')
         t.pop('chid')
@@ -49,6 +47,14 @@ def fetch_challenge(url: str):
         t['olines'] = chomp(t['olines'].split('\n'))
         res.tests.append(TestDescription(**t))
     return res
+
+
+def challenge_from_attempt(aid: str):
+    """fetch a challenge from the database"""
+    rows = query('select chid from attempts where code=?', [aid])
+    if not rows:
+        raise LookupError(f'Attempt "{aid}" not found in the database.')
+    return fetch_challenge(rows[0]['chid'])
 
 
 def get_server_id(url):

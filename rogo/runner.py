@@ -117,8 +117,8 @@ def run_test(cfg: Config, program: subprocess.Popen, test: TestDescription):
 def get_challenge(cfg: Config) -> Challenge:
     if cfg.test_plan:
         return orgtest.read_challenge(cfg.test_plan)
-    elif cfg.challenge_url:
-        return db.fetch_challenge(cfg.challenge_url)
+    elif cfg.attempt:
+        return db.challenge_from_attempt(cfg.attempt)
     else:
         raise NoTestPlanError()
 
