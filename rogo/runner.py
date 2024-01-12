@@ -49,7 +49,7 @@ def load_config() -> Config:
         if 'args' not in target:
             print("`targets/main` must specify a list of program arguments.")
             sys.exit()
-        res.challenge_url = data['challenge_url']
+        res.attempt = data.get('attempt')
         res.program_args = target['args']  # TODO: check that it's actually a list
         res.use_shell = target.get('shell', False)  # TODO: check that it's actually a bool
     return res
