@@ -20,16 +20,19 @@ insert into servers (url, name, info) values
 
 create table users (
     id integer primary key,
+    ts datetime not null default current_timestamp,
     sid integer not null references servers,
-    authid text, -- references external authentication provider (firebase)
-    username text not null);
+    authid text not null, -- references external authentication provider (firebase)
+    username text not null,
+    unique (sid, username),
+    unique (sid, authid));
 
 
 create table tokens (
     id integer primary key,
+    ts datetime not null default current_timestamp,
     uid integer not null references users,
-    jwt text not null,
-    ts integer not null );
+    jwt text not null);
 
 
 create table challenges (

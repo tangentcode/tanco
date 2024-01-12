@@ -49,3 +49,11 @@ def fetch_challenge(url: str):
         t['olines'] = chomp(t['olines'].split('\n'))
         res.tests.append(TestDescription(**t))
     return res
+
+
+def get_server_id(url):
+    """get the server id for a given url"""
+    rows = query('select id from servers where url=?', [url])
+    if not rows:
+        raise LookupError(f'Server "{url}" not found in the database.')
+    return rows[0]['id']

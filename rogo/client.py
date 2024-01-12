@@ -1,6 +1,8 @@
 import requests
 import os
 
+from . import database as db
+
 
 class RogoClient:
     """
@@ -8,10 +10,12 @@ class RogoClient:
     """
 
     def __init__(self, url=None):
-        self.url = url or os.environ.get('ROGO_SERVER', 'https://rogo.tangentcode.com')
+        self.url = url or os.environ.get('ROGO_SERVER', 'https://rogo.tangentcode.com/')
+        if not self.url.endswith('/'):
+            self.url += '/'
 
     def post(self, url, data):
-        url = url if url.startswith('/') else '/' + url
+        url = url[1:] if url.startswith('/') else url
         res = requests.post(self.url + url, json=data)
         return res.json()
 
@@ -22,5 +26,14 @@ class RogoClient:
         return self.post('auth/jwt', {"pre": pre})['token']
 
     def list_challenges(self):
-        res = requests.get(self.url + '/c:json')
+        res = requests.get(self.url + 'c:json')
         return res.json()
+
+    def whoami(self):
+        res = db.query("""
+            select u.username from tokens t, users u, servers s
+            where t.uid=u.id and u.sid=s.id and s.url = ?
+            """, [self.url])
+        if len(res) > 1:
+            raise LookupError('Multiple tokens found. This is a server database.')
+        return res[0]['username'] if res else None

@@ -2,7 +2,7 @@
 """
 command-line driver for rogo client.
 """
-import os, sys, cmd as cmdlib, json
+import os, sys, cmd as cmdlib, json, jwt as jwtlib
 import webbrowser
 
 from . import runner, orgtest, database as db
@@ -22,13 +22,32 @@ class RogoDriver(cmdlib.Cmd):
 
     def do_login(self, _arg):
         """Login to the server"""
+        if who := self.client.whoami():
+            print(f"Already logged in to {self.client.url} as {who}.")
+            return
+        sid = db.get_server_id(self.client.url)
         pre = self.client.get_pre_token()
-        print("pre token: %s" % pre)
         webbrowser.open(self.client.url + '/auth/login?pre=' + pre)
         jwt = self.client.get_jwt(pre=pre)
-        print("json web token: %s" % jwt)
+        data = jwtlib.JWT().decode(jwt, do_verify=False)  # TODO: verify
 
-    def do_delete(self, arg):
+        # TODO: have real usernames
+        uid = db.commit(
+            'insert into users (sid, authid, username) values (?, ?, ?)',
+            [sid, data['uid'], data['eml']])
+        db.commit('insert into tokens (uid, jwt) values (?, ?)', [uid, jwt])
+
+    def do_whoami(self, _arg):
+        """Show the current user"""
+        try:
+            who = self.client.whoami()
+        except LookupError as e:
+            print(e)
+            return
+        print(f'logged in as {who}' if who else 'not logged in')
+
+    @staticmethod
+    def do_delete(arg):
         """Delete a challenge"""
         if not arg:
             print("Usage: `delete <challenge name>`")
@@ -45,7 +64,8 @@ class RogoDriver(cmdlib.Cmd):
         tx.commit()
         print(f'Challenge "{arg}" deleted.')
 
-    def do_import(self, arg):
+    @staticmethod
+    def do_import(arg):
         """Import a challenge"""
         if not arg:
             print("usage: import <challenge.org>")

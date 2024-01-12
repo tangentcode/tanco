@@ -108,7 +108,7 @@ async def post_auth_jwt():
     jwt = await queues[pre].get()
     del queues[pre]
     print(f'jwt for pre[{pre}]:', jwt)
-    return {'token': f'{pre}->{jwt}'}
+    return {'token': jwt}
 
 
 @app.route('/auth/success', methods=['POST'])
