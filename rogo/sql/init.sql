@@ -47,11 +47,12 @@ create table attempts (
     id integer primary key,
     uid integer not null references users,
     chid integer not null references challenges,
-    ts integer not null,
-    hash text unique,
+    ts datetime not null default current_timestamp,
+    code text unique not null,
+    name text,
     done integer,
-    is_private integer,
-    state text,
+    is_private integer not null default 0,
+    state text not null default 'build',
     lang text,
     repo text);
 
