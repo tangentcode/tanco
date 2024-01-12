@@ -19,9 +19,11 @@ git commit    # once the test passes
 rogo next     # to fetch the next test
 ```
 
-## Running the Server (TODO)
+## Running the Server
 
-## Private Key
+First set up a private key, then run quart.
+
+### Private Key
 
 The `rogo login` command lets the command-line client
 log into the server in a multi-user setup.
@@ -38,3 +40,15 @@ ssh-keygen -t rsa -b 4096 -m PEM -f rogo_auth_key.pem
 
 This will also create a public key in `rogo_auth_key.pem.pub`.
 This is not currently used for anything.
+
+### Quart server
+
+``bash
+QUART_APP=rogo.app:app quart run # --reload
+``
+
+Note that the above runs the standard asgiref server, and as the message will say:
+
+```
+Please use an ASGI server (e.g. Hypercorn) directly in production 
+```
