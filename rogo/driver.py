@@ -7,6 +7,7 @@ import webbrowser
 
 from . import runner, orgtest, database as db
 from .client import RogoClient
+from .model import Config
 
 
 class RogoDriver(cmdlib.Cmd):
@@ -16,6 +17,7 @@ class RogoDriver(cmdlib.Cmd):
 
     def __init__(self):
         super().__init__()
+        self.result = None    # for passing data between commands
         self.client = RogoClient()
 
     # -- global database state --------------------------------
@@ -23,7 +25,7 @@ class RogoDriver(cmdlib.Cmd):
     def do_login(self, _arg):
         """Login to the server"""
         if who := self.client.whoami():
-            print(f"Already logged in to {self.client.url} as {who}.")
+            print(f"Already logged in to {self.client.url} as {who['username']}.")
             return
         sid = db.get_server_id(self.client.url)
         pre = self.client.get_pre_token()
@@ -44,7 +46,7 @@ class RogoDriver(cmdlib.Cmd):
         except LookupError as e:
             print(e)
             return
-        print(f'logged in as {who}' if who else 'not logged in')
+        print(f"logged in as {who['username']}" if who else "not logged in.")
 
     @staticmethod
     def do_delete(arg):
@@ -93,23 +95,63 @@ class RogoDriver(cmdlib.Cmd):
 
     def do_challenges(self, _arg):
         """List challenges"""
-        for x in self.client.list_challenges():
-            print(json.dumps([x['name'], x['title']]))
+        print(f'Listing challenges from {self.client.url}')
+        print()
+        self.result = self.client.list_challenges()
+        for c in self.result:
+            print(f' {c["name"]:16} : {c["title"]}')
+        print()
 
     # -- local project config ---------------------------------
 
     def do_init(self, arg):
-        print('TODO: rogo init')
-        print('For now, please copy the main .rogo file from github:')
-        print('  https://raw.githubusercontent.com/tangentstorm/rogo/main/.rogo')
-        print('and modify it yourself.')
+        """create .rogo file in current directory"""
+        if os.path.exists('.rogo'):
+            print("Already initialized.")
+            return
+        if not (who := self.client.whoami()):
+            print("Please login first.")
+            return
 
-    def do_test(self, arg):
+        # either way, the following sets self.result to challenge list
+        if arg:
+            self.result = self.client.list_challenges()
+        else:
+            self.do_challenges('')
+        while not arg:
+            print("Enter the name of the challenge you want to work on.")
+            arg = input("> ")
+        match = [c for c in self.result if c['name'] == arg]
+        if not match:
+            print(f"Sorry, challenge '{arg}' not found.")
+            return
+        c = match[0]
+        sid = db.get_server_id(self.client.url)
+        chid = db.commit("""insert or replace into challenges
+            (sid, name, title) values (?, ?, ?)
+            """, [sid, c['name'], c['title']])
+        # now we have arg = a valid challenge name on the server,
+        # so we have to initialize the attempt on both the remote
+        # and local databases.
+        aid = self.client.attempt(arg)
+        uid = who['id']
+        db.commit("""
+            insert into attempts (uid, chid, code) values (?, ?, ?)
+            """, [uid, chid, aid])
+        cfg = Config(attempt=aid)
+        with open('.rogo', 'w') as f:
+            f.write(cfg.to_json())
+        print('Project initialized.')
+        print('Edit .rogo to configure how to run your project.')
+        print('Then run `rogo test` to run the first test.')
+
+    @staticmethod
+    def do_test(arg):
         """Run the tests"""
         runner.main(['rogo']+[x for x in arg.split(' ') if x != ''])
 
-
-    def do_q(self, _arg):
+    @staticmethod
+    def do_q(_arg):
         """Exit the shell"""
         return True
 

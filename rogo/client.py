@@ -29,11 +29,19 @@ class RogoClient:
         res = requests.get(self.url + 'c:json')
         return res.json()
 
+    def attempt(self, challenge_name):
+        who = self.whoami()
+        if not who:
+            raise LookupError('You must be logged in to attempt a challenge.')
+        res = requests.post(self.url + 'c/' + challenge_name + '/attempt', {
+            'jwt': who['jwt']})
+        return res.json()['aid']
+
     def whoami(self):
         res = db.query("""
-            select u.username from tokens t, users u, servers s
+            select u.id, u.username, t.jwt from tokens t, users u, servers s
             where t.uid=u.id and u.sid=s.id and s.url = ?
             """, [self.url])
         if len(res) > 1:
             raise LookupError('Multiple tokens found. This is a server database.')
-        return res[0]['username'] if res else None
+        return res[0] if res else None
