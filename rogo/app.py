@@ -32,7 +32,7 @@ def list_challenges_data():
     return query("""
         select c.name, c.title,
           (select count(*) from tests t
-            where t.chid = c.id) as num_tests
+            where t.chid = c.rowid) as num_tests
         from challenges c""")
 
 
