@@ -143,7 +143,19 @@ class RogoDriver(cmdlib.Cmd):
             f.write(cfg.to_json())
         print('Project initialized.')
         print('Edit .rogo to configure how to run your project.')
-        print('Then run `rogo test` to run the first test.')
+        print('Then run `rogo check` to make sure rogo can run your program.')
+
+    @staticmethod
+    def do_check(arg):
+        runner.check(['rogo']+[x for x in arg.split(' ') if x != ''])
+
+    @staticmethod
+    def do_next(_arg):
+        """fetch the next test"""
+        # TODO:  double check that all tests pass and repo is clean
+        # TODO: fetch the next test from server
+        # TODO: show the description of the test
+        print("TODO: rogo next")
 
     @staticmethod
     def do_test(arg):

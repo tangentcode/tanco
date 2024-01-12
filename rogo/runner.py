@@ -6,9 +6,11 @@ Your first step is to write a *console-mode* program
 (one that does absolutely nothing!) and tell rogo
 where to find it.
 
-This is configured in your .rogo file, but you can also do this:
+This is configured in your .rogo file, but you can
+also use this command to test the configuration before
+adding it to that file:
 
-    rogo test [/path/to/your-program] [arguments]
+    rogo check [/path/to/your-program] [arguments]
 
 The path should refer to a physical file on disk, so if
 you need command line arguments, create a wrapper program.
@@ -68,11 +70,20 @@ class NoTestPlanError(Exception):
 
 
 def spawn(program_args, use_shell):
-    return subprocess.Popen(program_args,
+    try:
+        return subprocess.Popen(program_args,
                             shell=use_shell,
                             universal_newlines=True,
                             stdin=subprocess.PIPE,
                             stdout=subprocess.PIPE)
+    except OSError as e:
+        if e.errno == errno.ENOENT:
+            print("Couldn't find program:", program_args[0])
+            print("Make sure you have the right path.")
+        else:
+            print(f"Couldn't run program '{program_args[0]}':")
+            print('  ', e)
+        sys.exit()
 
 
 def send_cmds(cfg: Config, program, ilines):
@@ -137,6 +148,12 @@ def run_tests(cfg: Config):
         else:
             print()
             print("All %d tests passed." % num_passed)
+            print()
+            print("This may be a good time to commit your changes,")
+            print("or spend some time improving your code.")
+            print()
+            print("When you're ready, run `rogo next` to start work on the next feature.")
+            print()
     except (subprocess.TimeoutExpired, TestFailure) as e:
         print()
         print("%d of %d tests passed." % (num_passed, len(tests)))
@@ -160,45 +177,74 @@ def find_target(cfg: Config, argv: [str]) -> Config:
     raise FileNotFoundError(cfg.program_args[0])
 
 
-def main(argv: [str]):
+def get_custom_cfg(argv: [str]):
+    """return a config object, possibly overridden by command line args"""
     cfg = load_config()
     try:
         cfg = find_target(cfg, argv)
     except FileNotFoundError as e:
         print('File not found:', e)
+        sys.exit()
+    return cfg
+
+
+def handle_unexpected_error():
+    print('-'*50)
+    traceback.print_exc()
+    print('-'*50)
+    print("Oh no! Rogo encountered an unexpected problem while")
+    print("attempting to run your program. Please report the above")
+    print("traceback in the issue tracker, so that we can help you")
+    print("with the problem and provide a better error message in")
+    print("the future.")
+    print()
+    print("  https://github.com/tangentstorm/rogo/issues")
+    print()
+
+
+def check(argv: [str]):
+    cfg = get_custom_cfg(argv)
+    program = spawn(cfg.program_args, cfg.use_shell)
+    test = TestDescription()
+    test.name = 'check'
+    test.head = 'rogo check'
+    test.body = '\n'.join([
+        "Rogo needs to be able to run your program.",
+        "Please make sure that your program is marked as executable,",
+        "and that by default, it produces no output and returns exit code 0"
+    ])
+    try:
+        run_test(cfg, program, test)
+    except:
+        handle_unexpected_error()
     else:
-        cmdline = cfg.program_args
-        cmd = cmdline[0]
-        try:
-            try:
-                run_tests(cfg)
-            except NoTestPlanError as e:
-                print('No challenge selected.')
-                print('Use `rogo init` or set TEST_PLAN environment variable.')
-            except EnvironmentError as e:
-                if e.errno in [errno.EPERM, errno.EACCES]:
-                    print(); print(e)
-                    print("Couldn't run %r due to a permission error." % cmd)
-                    print("Make sure your program is marked as an executable.")
-                elif e.errno == errno.EPIPE:
-                    print(); print(e)
-                    print("%r quit before reading any input." % cmd)
-                    print("Make sure you are reading commands from standard input,")
-                    print("not trying to take arguments from the command line.")
-                else:
-                    raise
-        except:
-            print('-'*50)
-            traceback.print_exc()
-            print('-'*50)
-            print("Oh no! Rogo encountered an unexpected problem while")
-            print("attempting to run your program. Please report the above")
-            print("traceback in the issue tracker, so that we can help you")
-            print("with the problem and provide a better error message in")
-            print("the future.")
-            print()
-            print("  https://github.com/tangentstorm/rogo/issues")
-            print()
+        print(f"Rogo ran {' '.join(cfg.program_args)} successfully.")
+        print("Run `rogo next` to start the first test.")
+
+
+def main(argv: [str]):
+    cfg = get_custom_cfg(argv)
+    cmdline = cfg.program_args
+    cmd = cmdline[0]
+    try:
+        run_tests(cfg)
+    except NoTestPlanError as e:
+        print('No challenge selected.')
+        print('Use `rogo init` or set TEST_PLAN environment variable.')
+    except EnvironmentError as e:
+        if e.errno in [errno.EPERM, errno.EACCES]:
+            print(e)
+            print("Couldn't run %r due to a permission error." % cmd)
+            print("Make sure your program is marked as an executable.")
+        elif e.errno == errno.EPIPE:
+            print(); print(e)
+            print("%r quit before reading any input." % cmd)
+            print("Make sure you are reading commands from standard input,")
+            print("not trying to take arguments from the command line.")
+        else:
+            handle_unexpected_error()
+    except:
+        handle_unexpected_error()
 
 
 if __name__ == '__main__':
