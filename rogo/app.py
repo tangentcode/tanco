@@ -92,7 +92,7 @@ async def next_tests_for_attempt(code):
     for row in rows:
         row['olines'] = None
     print('next tests:', json.dumps(rows))
-    return db.get_next_tests(code)
+    return rows
 
 
 @app.route('/login', methods=['GET'])
