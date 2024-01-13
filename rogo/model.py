@@ -6,21 +6,51 @@ from enum import Enum
 ResultKind = Enum('ResultKind', 'Pass Fail AskServer')
 
 
+class ValidationRule:
+    def to_data(self):
+        raise NotImplementedError()
+
+    @staticmethod
+    def from_data(data):
+        match data['kind']:
+            case 'lines': return LineDiffRule(data['data'])
+            case _: raise ValueError(f"unknown rule kind: {data['kind']}")
+
+    @staticmethod
+    def from_json(jsn: str) -> 'ValidationRule':
+        return ValidationRule.from_data(json.loads(jsn))
+
+
+class LineDiffRule(ValidationRule):
+
+    def __init__(self, expected: [str]):
+        self.expected = expected
+
+    def to_data(self):
+        return {'kind': 'lines', 'data': self.expected}
+
+
 class TestFailure(AssertionError):
     pass
 
 
 class LineDiffFailure(TestFailure):
-    def __init__(self, expected: [str], actual: [str]):
-        self.expected = expected
-        self.actual = actual
+
+    def __init__(self, diff: [str]):
+        self.diff = diff
+
+    @staticmethod
+    def from_lines(actual: [str], expected: [str]):
+        return LineDiffFailure(list(difflib.Differ().compare(actual, expected)))
+
+    def to_data(self):
+        return {
+            'kind': 'diff',
+            'data': self.diff}
 
     def print_error(self):
-        print()
-        print("---- expected results ----")
-        print('\n'.join(self.expected))
         print("---- how to patch your output to pass the test ----")
-        diff = '\n'.join(list(difflib.Differ().compare(self.actual, self.expected)))
+        diff = '\n'.join(self.diff)
         print(diff)
 
 
@@ -28,7 +58,35 @@ class LineDiffFailure(TestFailure):
 class TestResult:
     kind: ResultKind
     error: TestFailure = None
-    rule: str = None
+    rule: ValidationRule = None
+
+    @staticmethod
+    def from_data(data: dict) -> 'TestResult':
+
+        print(data)
+
+        res = TestResult(kind=ResultKind[data['kind']])
+        match res.kind:
+            case ResultKind.AskServer: raise RecursionError()
+            case ResultKind.Fail:
+                err = data['error']
+                match err['kind']:
+                    case 'diff': res.error = LineDiffFailure(diff=err['data'])
+                    case _: raise ValueError(f"unknown error kind: {err['kind']}")
+            case ResultKind.Pass:
+                rule = data['rule']
+                match rule['kind']:
+                    case 'lines': res.rule = LineDiffRule(rule['data'])
+                    case _: raise ValueError(f"unknown rule kind: {rule['kind']}")
+        return res
+
+    def to_data(self):
+        """return raw data for json serialization"""
+        kind = self.kind.name
+        match kind:
+            case 'Fail': return {'kind': kind, 'error': self.error.to_data()}
+            case 'Pass': return {'kind': kind, 'rule': self.rule.to_data()}
+            case 'AskServer': raise NotImplementedError()
 
 
 @dataclass
@@ -42,18 +100,23 @@ class TestDescription:
     body: str = ''
     ilines: [str] = field(default_factory=list)
     olines: [str] = field(default_factory=list)
-    rule: str = ''
+
+    @property
+    def rule(self) -> ValidationRule:
+        if self.olines is None:
+            return None
+        else:
+            return LineDiffRule(self.olines)
 
     def check_output(self, actual: [str]) -> TestResult:
         if self.olines is None:
             return TestResult(ResultKind.AskServer)
         elif self.olines == actual:
-            return TestResult(ResultKind.Pass)
+            rule = LineDiffRule(self.olines)
+            return TestResult(ResultKind.Pass, rule=rule)
         else:
-            return TestResult(ResultKind.Fail,
-                              error=LineDiffFailure(
-                                  expected=self.olines,
-                                  actual=actual))
+            e = LineDiffFailure.from_lines(actual=actual, expected=self.olines)
+            return TestResult(ResultKind.Fail, error=e)
 
 
 @dataclass
