@@ -45,3 +45,10 @@ class RogoClient:
         if len(res) > 1:
             raise LookupError('Multiple tokens found. This is a server database.')
         return res[0] if res else None
+
+    def get_next(self, attempt):
+        who = self.whoami()
+        if not who:
+            raise LookupError('You must be logged in to get next test.')
+        return self.post('a/' + attempt + '/next', {'jwt': who['jwt']})
+

@@ -3,11 +3,12 @@
 command-line driver for rogo client.
 """
 import os, sys, cmd as cmdlib, json, jwt as jwtlib
+import sqlite3
 import webbrowser
 
 from . import runner, orgtest, database as db
 from .client import RogoClient
-from .model import Config
+from .model import Config, TestDescription
 
 
 class RogoDriver(cmdlib.Cmd):
@@ -151,13 +152,58 @@ class RogoDriver(cmdlib.Cmd):
     def do_check(arg):
         runner.check(['rogo']+[x for x in arg.split(' ') if x != ''])
 
-    @staticmethod
-    def do_next(_arg):
+    def do_show(self, arg):
+        """show the current test prompt"""
+        cfg = runner.load_config()
+        tests = db.get_next_tests(cfg.attempt)
+        self.result = (cfg.attempt, tests)
+        if tests:
+            if arg == '-n':
+                print('You already have the next test. Calling `rogo show`:')
+                print()
+            t = TestDescription(**tests[0])
+            print(f'#[{t.name}]: {t.head}')
+            print()
+            print(t.body)
+            print()
+            print("Use 'rogo test' to run the tests.")
+        elif arg == '-n':
+            pass
+        else:
+            print("No current tests are known.")
+            print("Use `rogo next` to fetch the next test.")
+
+    def do_next(self, _arg):
         """fetch the next test"""
         # TODO:  double check that all tests pass and repo is clean
-        # TODO: fetch the next test from server
-        # TODO: show the description of the test
-        print("TODO: rogo next")
+
+        self.do_show('-n')
+        (attempt, known_tests) = self.result
+        if known_tests:
+            return
+
+        # -- fetch the next test from the server
+        tests = self.client.get_next(attempt)
+        if not tests:
+            print("You have completed the challenge!")
+            # TODO: do something when you win
+            return
+        try:
+            tx = db.begin()
+            for t in tests:
+                tx.execute("""
+                    insert into tests (chid, name, head, body, grp, ord, ilines, olines)
+                    values (?, ?, ?, ?, ?, ?, ?, ?)
+                    """, [t['chid'], t['name'], t['head'], t['body'], t['grp'], t['ord'],
+                          t['ilines'], t['olines']])
+            tx.commit()
+        except sqlite3.IntegrityError:
+            # this should not actually happen (because the 'show' call worked)
+            # but just in case:
+            print("You've already acquired next tests.")
+
+        self.do_show()
+
 
     @staticmethod
     def do_test(arg):

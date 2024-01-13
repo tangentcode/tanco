@@ -80,6 +80,17 @@ async def attempt_challenge(name):
     return {'aid': code}
 
 
+@app.route('/a/<code>/next', methods=['POST'])
+async def next_tests_for_attempt(code):
+    # TODO: make sure you're only looking at attempts you're allowed to see
+    # otherwise you could spam server with invalid codes for centuries
+    # until a code worked, and then see the ultra-secret next test case. :)
+    print('attempt code:', code)
+    import json
+    print('next tests:', json.dumps(db.get_next_tests(code)))
+    return db.get_next_tests(code)
+
+
 @app.route('/login', methods=['GET'])
 async def get_login():
     return await quart.render_template('login.html')
