@@ -63,3 +63,16 @@ def get_server_id(url):
     if not rows:
         raise LookupError(f'Server "{url}" not found in the database.')
     return rows[0]['id']
+
+
+def get_next_tests(aid: str):
+    """get the next group of tests for a given attempt"""
+    return query("""
+        select t.* from
+          (select t.chid, t.grp, t.name, count(p.id) > 0 as passed
+          from tests t, attempts a left join progress p on a.id=p.aid
+          where a.chid = t.chid and a.code = ?
+          group by t.grp having passed=0 limit 1)
+        as x, tests t
+        where x.chid=t.chid and x.grp=t.grp
+        """, [aid])
