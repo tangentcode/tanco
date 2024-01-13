@@ -87,7 +87,11 @@ async def next_tests_for_attempt(code):
     # until a code worked, and then see the ultra-secret next test case. :)
     print('attempt code:', code)
     import json
-    print('next tests:', json.dumps(db.get_next_tests(code)))
+    rows = db.get_next_tests(code)
+    # hide the answers for now:
+    for row in rows:
+        row['olines'] = None
+    print('next tests:', json.dumps(rows))
     return db.get_next_tests(code)
 
 
