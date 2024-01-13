@@ -52,7 +52,6 @@ create table attempts (
     name text,
     done integer,
     is_private integer not null default 0,
-    state text not null default 'build',
     lang text,
     repo text);
 
