@@ -5,6 +5,9 @@ import json
 @dataclass
 class TestDescription:
     id: int = 0
+    chid: int = 0
+    grp: int = 0
+    ord: int = 0
     name: str = ''
     head: str = ''
     body: str = ''
