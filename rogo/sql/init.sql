@@ -74,4 +74,5 @@ create table tests (
     body text not null,
     ilines text not null,
     olines text,
+    unique(chid, name),
     unique(chid, grp, ord));
