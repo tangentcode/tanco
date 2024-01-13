@@ -44,7 +44,8 @@ def fetch_challenge(chid: int):
         t.pop('id')
         t.pop('chid')
         t['ilines'] = chomp(t['ilines'].split('\n'))
-        t['olines'] = chomp(t['olines'].split('\n'))
+        if t['olines'] is not None:
+            t['olines'] = chomp(t['olines'].split('\n'))
         res.tests.append(TestDescription(**t))
     return res
 
