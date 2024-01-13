@@ -152,7 +152,7 @@ class RogoDriver(cmdlib.Cmd):
     def do_check(arg):
         runner.check(['rogo']+[x for x in arg.split(' ') if x != ''])
 
-    def do_show(self, arg):
+    def do_show(self, arg=None):
         """show the current test prompt"""
         cfg = runner.load_config()
         tests = db.get_next_tests(cfg.attempt)
