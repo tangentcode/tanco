@@ -1,4 +1,13 @@
 #!/usr/bin/env python
+"""
+Test-running logic for validating rogo tests.
+"""
+import sys, os, errno, subprocess, traceback, json
+
+from . import orgtest, database as db
+from .model import TestDescription, Config, Challenge, ResultKind, TestResult, TestFailure
+from .client import RogoClient
+
 USER_HELP = """
 Rogo can't find your code!
 
@@ -27,10 +36,6 @@ Once rogo is able to launch your program, this message
 will be replaced with instructions for implementing your
 first feature.
 """
-import sys, os, errno, subprocess, difflib, traceback, json
-
-from . import orgtest, database as db
-from .model import TestDescription, Config, Challenge
 
 
 def load_config() -> Config:
@@ -55,14 +60,6 @@ def load_config() -> Config:
         res.program_args = target['args']  # TODO: check that it's actually a list
         res.use_shell = target.get('shell', False)  # TODO: check that it's actually a bool
     return res
-
-
-class TestFailure(Exception):
-    def __init__(self, msg):
-        self.msg = msg
-
-    def __str__(self):
-        return self.msg
 
 
 class NoTestPlanError(Exception):
@@ -105,24 +102,42 @@ def run_test(cfg: Config, program: subprocess.Popen, test: TestDescription):
     # listen for the response:
     (actual, _errs) = program.communicate(timeout=5)
     # TODO: handle errors in the `errs` string
+    actual = clean_output(cfg, actual)
+    local_check_output(cfg, actual, test)
+
+
+def clean_output(cfg: Config, actual: [str]) -> [str]:
     actual = [line.strip() for line in actual.splitlines()]
     actual = actual[cfg.skip_lines:]
     # strip trailing blank lines
     while actual and actual[-1] == "":
         actual.pop()
-    if actual != test.olines:
-        print()
-        print("test [%s] failed" % test.head)
-        print("---- input ----")
-        for cmd in test.ilines:
-            print(cmd)
-        print(test.body)
-        # print("---- expected results ----")
-        # print('\n'.join(opcodes['out']))
-        print("---- diff of expected vs actual ----")
-        diff = '\n'.join(list(difflib.Differ().compare(actual, test.olines)))
-        print(diff)
-        raise TestFailure('output mismatch')
+    return actual
+
+
+def check_with_server(cfg, actual, test) -> TestResult:
+    pass  # TODO
+
+
+def save_new_rule(test, rule):
+    pass  # TODO
+
+
+
+def local_check_output(cfg: Config, actual: [str], test: TestDescription):
+    local_res = test.check_output(actual)
+    match local_res.kind:
+        case ResultKind.Pass: pass
+        case ResultKind.Fail: raise local_res.error
+        case ResultKind.CheckWithServer:
+            remote_res = check_with_server(cfg, actual, test)
+            match remote_res.kind:
+                case ResultKind.Pass:
+                    save_new_rule(test, remote_res.rule)
+                case ResultKind.Fail:
+                    raise remote_res.error
+                case ResultKind.CheckWithServer:
+                    raise RecursionError("Server validation loop")
 
 
 def get_challenge(cfg: Config) -> Challenge:
@@ -161,6 +176,14 @@ def run_tests(cfg: Config):
             print("Test [%s] timed out." % test.name)
         else:
             print("Test [%s] failed." % test.name)
+            print()
+            print('#', test.name, test.head)
+            print(test.body)
+            print(" --- input given ------")
+            for line in test.ilines:
+                print(line)
+            print()
+            e.print_error()
 
 
 def find_target(cfg: Config, argv: [str]) -> Config:

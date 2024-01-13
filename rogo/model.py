@@ -1,5 +1,34 @@
-from dataclasses import dataclass, field
+import difflib
 import json
+from dataclasses import dataclass, field
+from enum import Enum
+
+ResultKind = Enum('ResultKind', 'Pass Fail AskServer')
+
+
+class TestFailure(AssertionError):
+    pass
+
+
+class LineDiffFailure(TestFailure):
+    def __init__(self, expected: [str], actual: [str]):
+        self.expected = expected
+        self.actual = actual
+
+    def print_error(self):
+        print()
+        print("---- expected results ----")
+        print('\n'.join(self.expected))
+        print("---- how to patch your output to pass the test ----")
+        diff = '\n'.join(list(difflib.Differ().compare(self.actual, self.expected)))
+        print(diff)
+
+
+@dataclass
+class TestResult:
+    kind: ResultKind
+    error: TestFailure = None
+    rule: str = None
 
 
 @dataclass
@@ -13,6 +42,18 @@ class TestDescription:
     body: str = ''
     ilines: [str] = field(default_factory=list)
     olines: [str] = field(default_factory=list)
+    rule: str = ''
+
+    def check_output(self, actual: [str]) -> TestResult:
+        if self.olines is None:
+            return TestResult(ResultKind.CheckWithServer)
+        elif self.olines == actual:
+            return TestResult(ResultKind.Pass)
+        else:
+            return TestResult(ResultKind.Fail,
+                              error=LineDiffFailure(
+                                  expected=self.olines,
+                                  actual=actual))
 
 
 @dataclass
