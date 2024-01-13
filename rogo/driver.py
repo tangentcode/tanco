@@ -78,7 +78,6 @@ class RogoDriver(cmdlib.Cmd):
                 print(f'Sorry, server "{c.server}" is not in the database.')
                 return
             sid = sids[0]['id']
-            print('sid is:', sid)
             if db.query('select * from challenges where sid=? and name=?', [sid, c.name]):
                 print(f'Sorry, challenge "{c.name}" already exists in the database.')
                 print(f'Use `rogo delete {c.name}` if you want to replace it.')
@@ -87,9 +86,12 @@ class RogoDriver(cmdlib.Cmd):
             cur = tx.execute('insert into challenges (sid, name, title) values (?, ?, ?)',
                              [sid, c.name, c.title])
             chid = cur.lastrowid
-            for t in c.tests:
-                tx.execute('insert into tests (chid, name, head, body, ilines, olines) values (?, ?, ?, ?, ?, ?)',
-                           [chid, t.name, t.head, t.body, '\n'.join(t.ilines), '\n'.join(t.olines)])
+            for (i, t) in enumerate(c.tests):
+                tx.execute("""
+                    insert into tests (chid, name, head, body, grp, ilines, olines)
+                    values (?, ?, ?, ?, ?, ?, ?)
+                    """, [chid, t.name, t.head, t.body, i,
+                          '\n'.join(t.ilines), '\n'.join(t.olines)])
             tx.commit()
             print(f'Challenge "{c.name}" imported with {len(c.tests)} tests.')
 

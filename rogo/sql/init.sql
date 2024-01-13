@@ -68,8 +68,11 @@ create table progress (
 create table tests (
     id integer primary key,
     chid integer not null references challenges,
+    grp integer not null default 0,  -- group of tests (one feature)
+    ord integer not null default 0,  -- order within group
     name text not null,
     head text not null,
     body text not null,
     ilines text not null,
-    olines integer not null);
+    olines integer not null,
+    unique(chid, grp, ord));
