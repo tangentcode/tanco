@@ -5,7 +5,8 @@ Test-running logic for validating rogo tests.
 import sys, os, errno, subprocess, traceback, json
 
 from . import orgtest, database as db
-from .model import TestDescription, Config, Challenge, ResultKind, TestResult, TestFailure
+from . import model as m
+from .model import TestDescription, Config, Challenge, ResultKind, TestFailure
 from .client import RogoClient
 
 USER_HELP = """
@@ -115,12 +116,8 @@ def clean_output(cfg: Config, actual: [str]) -> [str]:
     return actual
 
 
-def check_with_server(cfg, actual, test) -> TestResult:
-    pass  # TODO
-
-
-def save_new_rule(test, rule):
-    pass  # TODO
+def save_new_rule(test: m.TestDescription, rule: m.ValidationRule):
+    print("!!! TODO: save rule to db")
 
 
 def local_check_output(cfg: Config, actual: [str], test: TestDescription):
@@ -129,7 +126,8 @@ def local_check_output(cfg: Config, actual: [str], test: TestDescription):
         case ResultKind.Pass: pass
         case ResultKind.Fail: raise local_res.error
         case ResultKind.AskServer:
-            remote_res = check_with_server(cfg, actual, test)
+            client = RogoClient()
+            remote_res = client.check_output(cfg.attempt, test.name, actual)
             match remote_res.kind:
                 case ResultKind.Pass:
                     save_new_rule(test, remote_res.rule)

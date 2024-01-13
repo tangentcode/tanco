@@ -2,6 +2,7 @@ import requests
 import os
 
 from . import database as db
+from .model import TestResult
 
 
 class RogoClient:
@@ -52,3 +53,11 @@ class RogoClient:
             raise LookupError('You must be logged in to get next test.')
         return self.post('a/' + attempt + '/next', {'jwt': who['jwt']})
 
+    def check_output(self, attempt: str, test_name: str, actual: [str]):
+        who = self.whoami()
+        if not who:
+            raise LookupError('You must be logged in to check output.')
+        res = self.post(f'a/{attempt}/check/{test_name}', {
+            'jwt': who['jwt'],
+            'actual': actual})
+        return TestResult.from_data(res)
