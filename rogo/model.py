@@ -46,7 +46,7 @@ class TestDescription:
 
     def check_output(self, actual: [str]) -> TestResult:
         if self.olines is None:
-            return TestResult(ResultKind.CheckWithServer)
+            return TestResult(ResultKind.AskServer)
         elif self.olines == actual:
             return TestResult(ResultKind.Pass)
         else:

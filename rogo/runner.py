@@ -123,20 +123,19 @@ def save_new_rule(test, rule):
     pass  # TODO
 
 
-
 def local_check_output(cfg: Config, actual: [str], test: TestDescription):
     local_res = test.check_output(actual)
     match local_res.kind:
         case ResultKind.Pass: pass
         case ResultKind.Fail: raise local_res.error
-        case ResultKind.CheckWithServer:
+        case ResultKind.AskServer:
             remote_res = check_with_server(cfg, actual, test)
             match remote_res.kind:
                 case ResultKind.Pass:
                     save_new_rule(test, remote_res.rule)
                 case ResultKind.Fail:
                     raise remote_res.error
-                case ResultKind.CheckWithServer:
+                case ResultKind.AskServer:
                     raise RecursionError("Server validation loop")
 
 
