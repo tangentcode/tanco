@@ -189,18 +189,20 @@ class RogoDriver(cmdlib.Cmd):
             # TODO: do something when you win
             return
         try:
+            chid = db.challenge_from_attempt(attempt).id
             tx = db.begin()
             for t in tests:
                 tx.execute("""
                     insert into tests (chid, name, head, body, grp, ord, ilines, olines)
                     values (?, ?, ?, ?, ?, ?, ?, ?)
-                    """, [t['chid'], t['name'], t['head'], t['body'], t['grp'], t['ord'],
+                    """, [chid, t['name'], t['head'], t['body'], t['grp'], t['ord'],
                           t['ilines'], t['olines']])
             tx.commit()
-        except sqlite3.IntegrityError:
+        except sqlite3.IntegrityError as e:
             # this should not actually happen (because the 'show' call worked)
             # but just in case:
-            print("You've already acquired next tests.")
+            # print("You've already acquired next tests.")
+            print(e)
 
         self.do_show()
 
