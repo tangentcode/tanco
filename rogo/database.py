@@ -1,5 +1,5 @@
 import sqlite3
-from .model import Challenge, TestDescription
+from . import model as m
 
 SDB_PATH = 'rogo.sdb'  # TODO: make this configurable
 
@@ -39,20 +39,21 @@ def fetch_challenge(chid: int):
     rows = query('select * from challenges where id=?', [chid])
     if not rows:
         raise LookupError(f'Challenge "{chid}" not found in the database.')
-    res = Challenge(**rows[0])
+    res = m.Challenge(**rows[0])
     for t in query('select * from tests where chid=?', [chid]):
         t.pop('id')
         t.pop('chid')
         t['ilines'] = chomp(t['ilines'].split('\n'))
         if t['olines'] is not None:
             t['olines'] = chomp(t['olines'].split('\n'))
-        res.tests.append(TestDescription(**t))
+        res.tests.append(m.TestDescription(**t))
     return res
 
 
 def challenge_from_attempt(aid: str):
     """fetch a challenge from the database"""
-    rows = query('select chid from attempts where code=?', [aid])
+    rows = query('select chid from attempts where code=(:code)',
+                 {'code': aid})
     if not rows:
         raise LookupError(f'Attempt "{aid}" not found in the database.')
     return fetch_challenge(rows[0]['chid'])
@@ -69,11 +70,40 @@ def get_server_id(url):
 def get_next_tests(aid: str):
     """get the next group of tests for a given attempt"""
     return query("""
-        select t.* from
-          (select t.chid, t.grp, t.name, count(p.id) > 0 as passed
-          from tests t, attempts a left join progress p on a.id=p.aid
-          where a.chid = t.chid and a.code = ?
-          group by t.grp having passed=0 limit 1)
-        as x, tests t
-        where x.chid=t.chid and x.grp=t.grp
-        """, [aid])
+        select t.* from (
+            select t.chid, t.grp
+            from (attempts a left join tests t on a.chid=t.chid)
+                left join progress p on t.id=p.tid
+            where a.code=(:code)
+            group by t.grp having count(p.id)=0
+            order by t.grp limit 1) as g
+        left join tests t on g.chid=t.chid and g.grp=t.grp
+        """, {'code': aid})
+
+
+def save_progress(attempt: str, test: str, _passed: bool):
+    """save progress when a test passes"""
+    commit("""
+      insert into progress (aid, tid)
+        select a.id as aid, t.id as tid
+        from attempts a, tests t
+        where a.chid = t.chid
+          and a.code = ? and t.name = ?
+        """, [attempt, test])
+
+
+def save_rule(attempt: str, test: str, rule: dict):
+    """save a rule for a test"""
+    # TODO: save the rule to the database as json
+    # json.dumps(rule)
+
+    # for now, we still have this 'olines' thing
+    assert rule['kind'] == 'lines',\
+        f"don't know how to save {rule['kind']!r} rules"
+    commit("""
+        update tests set olines = ?
+        where name = ?
+          and chid = (
+            select a.chid from attempts a
+            where a.code = ?)
+        """, ['\n'.join(rule['data']), test, attempt])

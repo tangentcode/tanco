@@ -98,24 +98,33 @@ async def next_tests_for_attempt(code):
 
 @app.route('/a/<code>/check/<test_name>', methods=['POST'])
 async def check_test_for_attempt(code, test_name):
+
+    # fetch the expected output
+    # TODO: update to allow arbitrary validation rules
     rows = db.query(
         """
         select t.olines
         from attempts a left join tests t on a.chid=t.chid
         where a.code=? and t.name=?
         """, [code, test_name])
+
+    # right now we only use the LineDiffRule
+    t = m.TestDescription(olines=db.chomp(rows[0]['olines'].split('\n')))
+
+    # the actual output from the test run is the request body (json)
     # TODO: validate current user owns the attempt
     if not rows:
         return "unknown test or attempt", 404
     actual = (await quart.request.json).get('actual')
-
-    import json
-    print('actual:', json.dumps(actual))
     if actual is None:
         return "bad request: no 'actual' field in post", 400
-    t = m.TestDescription(olines=db.chomp(rows[0]['olines'].split('\n')))
+
     r = t.check_output(actual)
     print('test result:', r.to_data())
+
+    if r.is_pass():
+        db.save_progress(code, test_name, True)
+
     return r.to_data()
 
 

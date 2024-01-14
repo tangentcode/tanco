@@ -116,11 +116,12 @@ def clean_output(cfg: Config, actual: [str]) -> [str]:
     return actual
 
 
-def save_new_rule(test: m.TestDescription, rule: m.ValidationRule):
-    print("!!! TODO: save rule to db")
+def save_new_rule(attempt: str, test: str, rule: m.ValidationRule):
+    db.save_progress(attempt, test, True)
+    db.save_rule(attempt, test, rule.to_data())
 
 
-def local_check_output(cfg: Config, actual: [str], test: TestDescription):
+def local_check_output(cfg: m.Config, actual: [str], test: TestDescription):
     local_res = test.check_output(actual)
     match local_res.kind:
         case ResultKind.Pass: pass
@@ -130,7 +131,7 @@ def local_check_output(cfg: Config, actual: [str], test: TestDescription):
             remote_res = client.check_output(cfg.attempt, test.name, actual)
             match remote_res.kind:
                 case ResultKind.Pass:
-                    save_new_rule(test, remote_res.rule)
+                    save_new_rule(cfg.attempt, test.name, remote_res.rule)
                 case ResultKind.Fail:
                     raise remote_res.error
                 case ResultKind.AskServer:
