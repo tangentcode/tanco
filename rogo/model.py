@@ -63,8 +63,6 @@ class TestResult:
     @staticmethod
     def from_data(data: dict) -> 'TestResult':
 
-        print(data)
-
         res = TestResult(kind=ResultKind[data['kind']])
         match res.kind:
             case ResultKind.AskServer: raise RecursionError()
@@ -87,6 +85,9 @@ class TestResult:
             case 'Fail': return {'kind': kind, 'error': self.error.to_data()}
             case 'Pass': return {'kind': kind, 'rule': self.rule.to_data()}
             case 'AskServer': raise NotImplementedError()
+
+    def is_pass(self):
+        return self.kind == ResultKind.Pass
 
 
 @dataclass
