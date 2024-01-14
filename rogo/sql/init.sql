@@ -60,8 +60,8 @@ create table progress (
     id integer primary key,
     aid integer not null references attempts,
     tid integer not null references tests,
-    ts integer not null,
-    vcs_ref text);
+    ts datetime not null default current_timestamp,
+    ver text);
 
 
 create table tests (
