@@ -2,11 +2,41 @@
 
 A test-driven teaching environment for programmers.
 
+
+This is a work in progress. There are videos about it on:
+
+https://www.youtube.com/@tangentstream
+
 ## Installation
 
 ```bash
-pip install rogo
+# eventually:
+# pip install rogo
+
+# but for now, this is still very alpha stage, so:
+git clone https://github.com/tangentstorm/rogo.git
+cd rogo
+pip install -e .
 ```
+
+## setting up the database
+
+Currently expects `rogo.sdb` in the current directory.
+
+You need one copy for the server, and one copy for each challenge attempt.
+(So these should run in separate directories.)
+
+(Eventually on the client side, there will only be one global database
+shared by all attempts on your machine, but because rogo still expects
+the database to be in the current directory, you need multiple copies.)
+
+For now, you have to do this manually, by running the following commands:
+
+```bash
+cd /path/to/rogo-repo
+echo '.read rogo/sql/init.sql' | sqlite3 rogo.sdb 
+```
+
 
 ## Using the Client
 
