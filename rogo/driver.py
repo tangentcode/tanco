@@ -170,7 +170,8 @@ class RogoDriver(cmdlib.Cmd):
         elif arg == '-n':
             pass
         else:
-            print("No current tests are known.")
+            print("All known tests have passed.")
+            print("Use `rogo test` to check that they still pass.")
             print("Use `rogo next` to fetch the next test.")
 
     def do_next(self, _arg):
@@ -201,11 +202,9 @@ class RogoDriver(cmdlib.Cmd):
         except sqlite3.IntegrityError as e:
             # this should not actually happen (because the 'show' call worked)
             # but just in case:
-            # print("You've already acquired next tests.")
             print(e)
 
         self.do_show()
-
 
     @staticmethod
     def do_test(arg):
