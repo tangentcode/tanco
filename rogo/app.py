@@ -28,8 +28,8 @@ JWT_KEY = jwtlib.jwk_from_pem(open('rogo_auth_key.pem', 'rb').read())
 
 
 def htmx_fragment(f0):
-    async def f():
-        body = (await f0()) if inspect.iscoroutinefunction(f0) else f0()
+    async def f(*a, **kw):
+        body = (await f0(*a, **kw)) if inspect.iscoroutinefunction(f0) else f0(*a, **kw)
         qr = quart.request
         if qr.headers.get('HX-Request'):
             return body
@@ -44,7 +44,7 @@ def platonic(route, template, hx=True):
     depending on the presence of the string '.json' in the url"""
     def decorator(f0):
         async def fp(*a, **kw):
-            data = (await f0()) if inspect.iscoroutinefunction(f0) else f0()
+            data = (await f0(*a, **kw)) if inspect.iscoroutinefunction(f0) else f0(*a, **kw)
             if quart.request.path.endswith('.json'):
                 return data
             else:
@@ -79,26 +79,24 @@ async def about():
     return await quart.render_template('about.html')
 
 
-def list_challenges_data():
+@platonic('/c', 'challenges.html')
+def list_challenges():
     return db.query("""
-        select c.id, c.name, c.title,
-          (select count(*) from tests t
-            where t.chid = c.rowid) as num_tests
+        select c.id, c.name, c.title
         from challenges c""")
 
 
-@platonic('/c', 'challenges.html')
-def list_challenges():
-    return list_challenges_data()
-
-
-@app.route('/c/<name>')
-@htmx_fragment
+@platonic('/c/<name>', 'challenge.html')
 async def show_challenge(name):
-    data = [x for x in list_challenges_data()
-            if x['name'] == name]
+    data = db.query("""
+        select c.id, c.name, c.title,
+          (select count(*) from tests t
+           where t.chid = c.rowid) as num_tests
+        from challenges c
+        where name=?
+        """, [name])
     quart.abort(404) if not data else ok
-    return await quart.render_template('challenge.html', data=data[0])
+    return data[0]
 
 
 async def uid_from_request():
