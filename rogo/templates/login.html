@@ -6,7 +6,7 @@
 </head>
 <body>
 
-<h1>hello firebase</h1>
+<h1>hello <span id="username"></span></h1>
 
 <button style="display:none" id="sign-out">Sign Out</button>
 
@@ -25,64 +25,42 @@
 {% endif %}
 
 <div id="login-buttons" style="display:none">
-  <button onclick="attemptLogin('google')">Login with Google</button>
+  <button onclick="loginWith('google')">Login with Google</button>
   <!-- <button onclick="attemptLogin('github')">Login with Github</button> -->
 </div>
 
 <script type="module">
-  // Import the functions you need from the SDKs you need
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
   import {
-    getAuth,
-    signInWithRedirect,
     signOut,
-    GithubAuthProvider,
-    GoogleAuthProvider,
-    getRedirectResult
-  } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js"
-
-  const firebaseConfig = {
-    apiKey: "AIzaSyB186Sn82G_z-u38HWQq5-PuMvTIDa4SX8",
-    authDomain: "rogo-dev-4e99f.firebaseapp.com",
-    projectId: "rogo-dev-4e99f",
-    storageBucket: "rogo-dev-4e99f.appspot.com",
-    messagingSenderId: "212137834895",
-    appId: "1:212137834895:web:bcfcad4e186caef72273fa"};
-
-  async function attemptLogin(how) {
-    let provider = null;
-    switch(how) {
-      // TODO: case 'github': provider = new GithubAuthProvider(); break;
-      case 'google': provider = new GoogleAuthProvider(); break;
-      default: console.log('no provider specified'); return; }
-    await signInWithRedirect(auth, provider);
-    await getRedirectResult(auth);
-    if (auth.currentUser) { onLoginSuccess() }
-    else { alert('login failed')}}
+    currentUser,
+    attemptLogin} from "/static/login.m.js";
 
   function show(eid) {
     document.getElementById(eid).style.display ='block' }
 
-  function onLoginSuccess() {
+
   {% if pre != '??' %}
+  function onLoginSuccess() {
     const successForm = document.getElementById('successForm')
-    successForm.accessToken.value = auth.currentUser.accessToken
-    successForm.submit()
-  {% endif %} }
+    successForm.accessToken.value = currentUser().accessToken
+    successForm.submit() }
+  {% else %}
+  function onLoginSuccess() {}
+  {% endif %}
+
+
 
   // --- main code ----------------------------------------
 
-  const app = initializeApp(firebaseConfig);
 
   document.getElementById('sign-out').addEventListener('click', () => {
-    signOut(auth)
+    signOut()
       .then(() => {
         console.log('signed out')
         document.location.reload() })
       .catch((error) => { console.error(error)}) })
 
-  const auth = getAuth();
-  await auth.authStateReady();
+
 
   {% if pre %}
     {% if pre == '??' %}
@@ -91,15 +69,23 @@
         <p>You should only visit this page by running <code>rogo login</code></p>
         <p>To log in directly, go to <a href="/login">/login</a></p>`
     {% else %}
-      if (auth.currentUser) { onLoginSuccess() }
+      if (currentUser()) { onLoginSuccess() }
       else { show('login-buttons') }
     {% endif %}
   {% else %}{#  main login page logic #}
-    let eid = auth.currentUser ? 'sign-out' : 'login-buttons';
+    let eid = currentUser() ? 'sign-out' : 'login-buttons';
     show(eid)
   {% endif %}
 
-  window.attemptLogin = attemptLogin;
+  window.loginWith = async function (how) {
+    return await attemptLogin(how, onLoginSuccess) };
+
+  window.currentUser = currentUser;
+
+  let u = currentUser();
+  if (u) { document.getElementById('username').innerText = u.displayName; }
+
+
 </script>
 </body>
 </html>
