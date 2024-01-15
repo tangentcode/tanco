@@ -9,6 +9,9 @@ from . import database as db
 from . import model as m
 
 app = quart.Quart(__name__)
+# TODO: make this dev-server only
+app.config['TEMPLATES_AUTO_RELOAD'] = True
+
 ok = None
 
 # this maps pre-tokens to async queues that
