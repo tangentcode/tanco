@@ -27,7 +27,7 @@ class RogoClient:
         return self.post('auth/jwt', {"pre": pre})['token']
 
     def list_challenges(self):
-        res = requests.get(self.url + 'c:json')
+        res = requests.get(self.url + 'c.json')
         return res.json()
 
     def attempt(self, challenge_name):

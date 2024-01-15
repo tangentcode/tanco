@@ -8,6 +8,10 @@
 </head>
 <body>
 
+<div id="user">
+  <a href="/login">Login</a>
+</div>
+
 <h1>Rogo</h1>
 
 <nav>
@@ -17,11 +21,17 @@
   </ul>
 </nav>
 
+{% if body %}
+<main id="main" hx-boost="true">
+  {{ body|safe }}
+</main>
+{% else %}
 <main id="main"
       hx-trigger="load once"
       hx-get="/about"
       hx-boost="true">
 </main>
+{% endif %}
 
 
 </body>

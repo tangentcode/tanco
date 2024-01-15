@@ -1,6 +1,7 @@
 import random
 import string
 import asyncio
+import inspect
 
 import quart
 import jwt as jwtlib
@@ -21,6 +22,51 @@ queues = {}
 JWT_OBJ = jwtlib.JWT()
 JWT_KEY = jwtlib.jwk_from_pem(open('rogo_auth_key.pem', 'rb').read())
 
+# -------------------------------------------------------------
+# mini web framework to wrap htmx fragments in a layout
+# and also allow fetching raw json with .json suffix
+
+
+def htmx_fragment(f0):
+    async def f():
+        body = (await f0()) if inspect.iscoroutinefunction(f0) else f0()
+        qr = quart.request
+        if qr.headers.get('HX-Request'):
+            return body
+        else:
+            return await quart.render_template('index.html', body=body)
+    f.__name__ = f0.__name__
+    return f
+
+
+def platonic(route, template, hx=True):
+    """allows an endpoint that returns data to serve html or json,
+    depending on the presence of the string '.json' in the url"""
+    def decorator(f0):
+        async def fp(*a, **kw):
+            data = (await f0()) if inspect.iscoroutinefunction(f0) else f0()
+            if quart.request.path.endswith('.json'):
+                return data
+            else:
+                return await quart.render_template(template, data=data)
+
+        async def fj(*a, **kw):
+            return await fp(*a, **kw)
+
+        @htmx_fragment
+        async def fhx(*a, **kw):
+            return await fp(*a, **kw)
+
+        fp.__name__ = f0.__name__
+        fhx.__name__ = f0.__name__
+        fj.__name__ = f0.__name__ + '_json'
+        app.route(route)(fhx if hx else fp)
+        app.route(route + '.json')(fj)
+        return fp
+    return decorator
+
+# -------------------------------------------------------------
+
 
 @app.route('/')
 async def index():
@@ -28,6 +74,7 @@ async def index():
 
 
 @app.route('/about')
+@htmx_fragment
 async def about():
     return await quart.render_template('about.html')
 
@@ -40,18 +87,13 @@ def list_challenges_data():
         from challenges c""")
 
 
-@app.route('/c:json')
-def list_challenges_json():
+@platonic('/c', 'challenges.html')
+def list_challenges():
     return list_challenges_data()
 
 
-@app.route('/c')
-async def list_challenges():
-    data = list_challenges_data()
-    return await quart.render_template('challenges.html', data=data)
-
-
 @app.route('/c/<name>')
+@htmx_fragment
 async def show_challenge(name):
     data = [x for x in list_challenges_data()
             if x['name'] == name]
