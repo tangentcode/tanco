@@ -1,0 +1,13 @@
+<title>user: {{ data.username }}</title>
+
+<h1>user: {{ data.username }}</h1>
+
+
+<h2>attempts</h2>
+<ul hx-target="#main">
+{% for a in data.attempts %}
+  <li>
+    <a href="/a/{{ a.code }}">{{  a.code |truncate(8) }}</a> : {{ a.c_name }}
+  </li>
+{% endfor %}
+</ul>

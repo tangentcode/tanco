@@ -79,6 +79,21 @@ async def about():
     return await quart.render_template('about.html')
 
 
+def INSECURE_DEFAULT_USER():  # TODO: fix
+    return dict(authid='ZleGnZck6iNDHe704DK4GHGz9qI2', username='tangentstorm')
+
+
+@platonic('/me', 'me.html')
+async def me():
+    data = INSECURE_DEFAULT_USER()
+    data['attempts'] = db.query("""
+        select c.name as c_name, c.title, a.code
+        from attempts a, challenges c, users u
+        where a.chid=c.id and u.authid=? and a.uid=u.id
+        """, [data['authid']])
+    return data
+
+
 @platonic('/c', 'challenges.html')
 def list_challenges():
     return db.query("""
@@ -122,6 +137,32 @@ async def attempt_challenge(name):
         insert into attempts (uid, chid, code) values (?, ?, ?)
         """, [uid, chid, code])
     return {'aid': code}
+
+
+@platonic('/a/<code>', 'attempt.html')
+async def show_attempt(code):
+    data = db.query("""
+        select a.code, c.name as c_name, u.username as u_name
+        from attempts a, challenges c, users u
+        where a.code = (:code)
+        """, {'code': code})[0]
+    data['progress'] = db.query("""
+        select t.name as t_name, p.ts from attempts a, tests t, progress p
+        where a.code = (:code) and a.id = p.aid and p.tid = t.id
+        """, [code])
+    return data
+
+
+@platonic('/a/<code>/t/<name>', 'test.html')
+async def show_test(**kw):
+    data = db.query("""
+        select t.name, t.head, t.body, t.ilines,
+           t.olines
+        from attempts a, tests t        
+        where a.chid = t.chid
+          and a.code = (:code) and t.name=(:name)
+        """, kw)[0]
+    return data
 
 
 @app.route('/a/<code>/next', methods=['POST'])
