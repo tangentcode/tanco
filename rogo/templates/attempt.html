@@ -1,10 +1,43 @@
 
+<span hx-replace-url="false">
+
+<script src="https://unpkg.com/htmx.org/dist/ext/ws.js"></script>
 
 
 
 <title>{{ data.c_name }} attempt by {{ data.u_name }}</title>
 <h1>{{ data.c_name }} attempt by {{ data.u_name }}</h1>
 
+<!-- temp form to trigger websocket -->
+<form id="poster" action="{{ url }}/tmp" method="post"
+      hx-boost="true" hx-target="#response">
+  <input type="text" name="data" value="test" placeholder="data">
+  <br/>
+  <input type="submit" value="submit">
+</form>
+<div id="response">
+  ((form response))
+</div>
+
+
+<!-- websocket content -->
+<script>
+  htmx.createWebSocket = function(uri) {
+    let url = `${document.location}/${uri}`.replace('http','ws')
+    console.log('connecting to:', url)
+    let ws = new WebSocket(url)
+    ws.onopen = function() { console.log({w:0, m:'connecting...'}) }
+    ws.onclose = function() { console.log({w:0, m:'connection closed.'}) }
+    return ws }
+</script>
+<div id="ws" hx-ext="ws" ws-connect="live"></div>
+<div id="live">
+  ((awaiting websocket content))
+</div>
+
+
+
+<!-- list progress (passed tests) -->
 <h2>progress</h2>
 <ul hx-target="#test-detail">
 {% for p in data.progress %}
@@ -13,7 +46,8 @@
   </li>
 {% endfor %}
 </ul>
-
 <div id="test-detail">
 
 </div>
+
+</span>

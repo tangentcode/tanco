@@ -17,7 +17,9 @@ ok = None
 
 # this maps pre-tokens to async queues that
 # will eventually yield the jwt token.
-queues = {}
+queues: {'pretoken': [asyncio.Queue]} = {}
+
+observers: {'attempt': [asyncio.Queue]} = {}
 
 JWT_OBJ = jwtlib.JWT()
 JWT_KEY = jwtlib.jwk_from_pem(open('rogo_auth_key.pem', 'rb').read())
@@ -48,7 +50,7 @@ def platonic(route, template, hx=True):
             if quart.request.path.endswith('.json'):
                 return data
             else:
-                return await quart.render_template(template, data=data)
+                return await quart.render_template(template, data=data, url=quart.request.path)
 
         async def fj(*a, **kw):
             return await fp(*a, **kw)
@@ -151,6 +153,48 @@ async def show_attempt(code):
         where a.code = (:code) and a.id = p.aid and p.tid = t.id
         """, [code])
     return data
+
+
+@app.websocket('/a/<code>/live')
+async def attempt_live(code):
+    print("in attempt_live!!!!!!!!!!!!!")
+    ws = quart.websocket
+    q = asyncio.Queue()
+    global observers
+    observers.setdefault(code, []).append(q)
+    try:
+        while True:
+            data = await q.get()
+            html = await quart.render_template('live.html', data=data)
+            await ws.send(html)
+    except asyncio.CancelledError:
+        observers[code].remove(q)
+
+
+@app.websocket('/live')
+async def live():
+    code = 'abc123'
+    print("in here!!!!!!!!!!!!!")
+    ws = quart.websocket
+    q = asyncio.Queue()
+    global observers
+    observers.setdefault(code, []).append(q)
+    try:
+        while True:
+            data = await q.get()
+            html = await quart.render_template('live.html', data=data)
+            await ws.send(html)
+    except asyncio.CancelledError:
+        observers[code].remove(q)
+
+
+@app.route('/a/<code>/tmp', methods=['POST'])
+async def attempt_tmp(code):
+    """temp thing to trigger websocket updates"""
+    data = (await quart.request.form).get('data')
+    for o in observers.get(code, []):
+        await o.put(data)
+    return 'got: ' + data
 
 
 @platonic('/a/<code>/t/<name>', 'test.html')
