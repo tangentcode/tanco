@@ -30,11 +30,10 @@
     ws.onclose = function() { console.log({w:0, m:'connection closed.'}) }
     return ws }
 </script>
-<div id="ws" hx-ext="ws" ws-connect="live"></div>
-<div id="live">
+<div id="ws" hx-ext="ws" ws-connect="live" hx-target="#live"></div>
+<span id="live">
   ((awaiting websocket content))
-</div>
-
+</span>
 
 
 <!-- list progress (passed tests) -->

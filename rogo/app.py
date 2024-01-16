@@ -157,33 +157,14 @@ async def show_attempt(code):
 
 @app.websocket('/a/<code>/live')
 async def attempt_live(code):
-    print("in attempt_live!!!!!!!!!!!!!")
     ws = quart.websocket
     q = asyncio.Queue()
     global observers
     observers.setdefault(code, []).append(q)
     try:
         while True:
-            data = await q.get()
-            html = await quart.render_template('live.html', data=data)
-            await ws.send(html)
-    except asyncio.CancelledError:
-        observers[code].remove(q)
-
-
-@app.websocket('/live')
-async def live():
-    code = 'abc123'
-    print("in here!!!!!!!!!!!!!")
-    ws = quart.websocket
-    q = asyncio.Queue()
-    global observers
-    observers.setdefault(code, []).append(q)
-    try:
-        while True:
-            data = await q.get()
-            html = await quart.render_template('live.html', data=data)
-            await ws.send(html)
+            html = await q.get()
+            await ws.send(f'<span id="live">{html}</span>')
     except asyncio.CancelledError:
         observers[code].remove(q)
 
@@ -231,13 +212,13 @@ async def check_test_for_attempt(code, test_name):
     # TODO: update to allow arbitrary validation rules
     rows = db.query(
         """
-        select t.olines
+        select t.name, t.head, t.body, t.ilines, t.olines
         from attempts a left join tests t on a.chid=t.chid
         where a.code=? and t.name=?
         """, [code, test_name])
 
     # right now we only use the LineDiffRule
-    t = m.TestDescription(olines=db.chomp(rows[0]['olines'].split('\n')))
+    t = db.test_from_row(rows[0])
 
     # the actual output from the test run is the request body (json)
     # TODO: validate current user owns the attempt
@@ -253,6 +234,10 @@ async def check_test_for_attempt(code, test_name):
     if r.is_pass():
         db.save_progress(code, test_name, True)
 
+    if obs := observers.get(code, []):
+        html = await quart.render_template('result.html', test=t, result=r, actual=actual)
+        for o in obs:
+            await o.put(html)
     return r.to_data()
 
 

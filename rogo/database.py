@@ -40,14 +40,17 @@ def fetch_challenge(chid: int):
     if not rows:
         raise LookupError(f'Challenge "{chid}" not found in the database.')
     res = m.Challenge(**rows[0])
-    for t in query('select * from tests where chid=?', [chid]):
-        t.pop('id')
-        t.pop('chid')
-        t['ilines'] = chomp(t['ilines'].split('\n'))
-        if t['olines'] is not None:
-            t['olines'] = chomp(t['olines'].split('\n'))
-        res.tests.append(m.TestDescription(**t))
+    for row in query('select * from tests where chid=?', [chid]):
+        res.tests.append(test_from_row(row))
     return res
+
+
+def test_from_row(row) -> m.TestDescription:
+    t = row
+    t['ilines'] = chomp(t['ilines'].split('\n'))
+    if t['olines'] is not None:
+        t['olines'] = chomp(t['olines'].split('\n'))
+    return m.TestDescription(**t)
 
 
 def challenge_from_attempt(aid: str):
