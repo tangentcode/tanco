@@ -217,9 +217,6 @@ async def check_test_for_attempt(code, test_name):
         where a.code=? and t.name=?
         """, [code, test_name])
 
-    # right now we only use the LineDiffRule
-    t = db.test_from_row(rows[0])
-
     # the actual output from the test run is the request body (json)
     # TODO: validate current user owns the attempt
     if not rows:
@@ -227,6 +224,9 @@ async def check_test_for_attempt(code, test_name):
     actual = (await quart.request.json).get('actual')
     if actual is None:
         return "bad request: no 'actual' field in post", 400
+
+    # right now we only use the LineDiffRule
+    t = db.test_from_row(rows[0])
 
     r = t.check_output(actual)
     print('test result:', r.to_data())
