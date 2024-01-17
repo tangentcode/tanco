@@ -1,26 +1,26 @@
 #!/usr/bin/env python
 """
-Test-running logic for validating rogo tests.
+Test-running logic for validating tanco tests.
 """
 import sys, os, errno, subprocess, traceback, json
 
 from . import orgtest, database as db
 from . import model as m
 from .model import TestDescription, Config, Challenge, ResultKind, TestFailure
-from .client import RogoClient
+from .client import TancoClient
 
 USER_HELP = """
-Rogo can't find your code!
+Tanco can't find your code!
 
 Your first step is to write a *console-mode* program
-(one that does absolutely nothing!) and tell rogo
+(one that does absolutely nothing!) and tell tanco
 where to find it.
 
-This is configured in your .rogo file, but you can
+This is configured in your .tanco file, but you can
 also use this command to test the configuration before
 adding it to that file:
 
-    rogo check [/path/to/your-program] [arguments]
+    tanco check [/path/to/your-program] [arguments]
 
 The path should refer to a physical file on disk, so if
 you need command line arguments, create a wrapper program.
@@ -31,9 +31,9 @@ target program.
 
 If you need more help with setting up, try reading:
 https://github.com/LearnProgramming/learntris/wiki/Getting-Set-Up
-(rogo was based on the test runner for learntris)
+(tanco was based on the test runner for learntris)
 
-Once rogo is able to launch your program, this message
+Once tanco is able to launch your program, this message
 will be replaced with instructions for implementing your
 first feature.
 """
@@ -44,15 +44,15 @@ def load_config() -> Config:
     res.input_path = os.environ.get("INPUT_PATH", "")
     res.skip_lines = int(os.environ.get("SKIP_LINES", "0"))
     res.test_plan = os.environ.get("TEST_PLAN")
-    if os.path.exists('.rogo'):
+    if os.path.exists('.tanco'):
         try:
-            data = json.load(open('.rogo'))
+            data = json.load(open('.tanco'))
             target = data['targets']['main']
         except json.decoder.JSONDecodeError as e:
-            print("Error reading .rogo file:", e)
+            print("Error reading .tanco file:", e)
             sys.exit()
         except KeyError:
-            print("`targets/main` found in the .rogo file.")
+            print("`targets/main` found in the .tanco file.")
             sys.exit()
         if 'args' not in target:
             print("`targets/main` must specify a list of program arguments.")
@@ -127,7 +127,7 @@ def local_check_output(cfg: m.Config, actual: [str], test: TestDescription):
         case ResultKind.Pass: pass
         case ResultKind.Fail: raise local_res.error
         case ResultKind.AskServer:
-            client = RogoClient()
+            client = TancoClient()
             remote_res = client.check_output(cfg.attempt, test.name, actual)
             match remote_res.kind:
                 case ResultKind.Pass:
@@ -165,7 +165,7 @@ def run_tests(cfg: Config):
             print("This may be a good time to commit your changes,")
             print("or spend some time improving your code.")
             print()
-            print("When you're ready, run `rogo next` to start work on the next feature.")
+            print("When you're ready, run `tanco next` to start work on the next feature.")
             print()
     except (subprocess.TimeoutExpired, TestFailure) as e:
         print()
@@ -213,13 +213,13 @@ def handle_unexpected_error():
     print('-'*50)
     traceback.print_exc()
     print('-'*50)
-    print("Oh no! Rogo encountered an unexpected problem while")
+    print("Oh no! Tanco encountered an unexpected problem while")
     print("attempting to run your program. Please report the above")
     print("traceback in the issue tracker, so that we can help you")
     print("with the problem and provide a better error message in")
     print("the future.")
     print()
-    print("  https://github.com/tangentstorm/rogo/issues")
+    print("  https://github.com/tangentstorm/tanco/issues")
     print()
 
 
@@ -228,9 +228,9 @@ def check(argv: [str]):
     program = spawn(cfg.program_args, cfg.use_shell)
     test = TestDescription()
     test.name = 'check'
-    test.head = 'rogo check'
+    test.head = 'tanco check'
     test.body = '\n'.join([
-        "Rogo needs to be able to run your program.",
+        "Tanco needs to be able to run your program.",
         "Please make sure that your program is marked as executable,",
         "and that by default, it produces no output and returns exit code 0"
     ])
@@ -239,8 +239,8 @@ def check(argv: [str]):
     except:
         handle_unexpected_error()
     else:
-        print(f"Rogo ran {' '.join(cfg.program_args)} successfully.")
-        print("Run `rogo next` to start the first test.")
+        print(f"Tanco ran {' '.join(cfg.program_args)} successfully.")
+        print("Run `tanco next` to start the first test.")
 
 
 def main(argv: [str]):
@@ -251,7 +251,7 @@ def main(argv: [str]):
         run_tests(cfg)
     except NoTestPlanError as e:
         print('No challenge selected.')
-        print('Use `rogo init` or set TEST_PLAN environment variable.')
+        print('Use `tanco init` or set TEST_PLAN environment variable.')
     except EnvironmentError as e:
         if e.errno in [errno.EPERM, errno.EACCES]:
             print(e)

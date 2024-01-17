@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Rogo Dev App</title>
+  <title>Tanco Dev App</title>
 </head>
 <body>
 
@@ -66,7 +66,7 @@
     {% if pre == '??' %}
       document.body.innerHTML = `
         <h1>error</h1>
-        <p>You should only visit this page by running <code>rogo login</code></p>
+        <p>You should only visit this page by running <code>tanco login</code></p>
         <p>To log in directly, go to <a href="/login">/login</a></p>`
     {% else %}
       if (currentUser()) { onLoginSuccess() }

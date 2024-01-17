@@ -1,25 +1,25 @@
 #!/bin/env python
 """
-command-line driver for rogo client.
+command-line driver for tanco client.
 """
 import os, sys, cmd as cmdlib, json, jwt as jwtlib
 import sqlite3
 import webbrowser
 
 from . import runner, orgtest, database as db
-from .client import RogoClient
+from .client import TancoClient
 from .model import Config, TestDescription
 
 
-class RogoDriver(cmdlib.Cmd):
-    prompt = "rogo> "
+class TancoDriver(cmdlib.Cmd):
+    prompt = "tanco> "
     completekey = ''
     cmdqueue = ''
 
     def __init__(self):
         super().__init__()
         self.result = None    # for passing data between commands
-        self.client = RogoClient()
+        self.client = TancoClient()
 
     # -- global database state --------------------------------
 
@@ -81,7 +81,7 @@ class RogoDriver(cmdlib.Cmd):
             sid = sids[0]['id']
             if db.query('select * from challenges where sid=? and name=?', [sid, c.name]):
                 print(f'Sorry, challenge "{c.name}" already exists in the database.')
-                print(f'Use `rogo delete {c.name}` if you want to replace it.')
+                print(f'Use `tanco delete {c.name}` if you want to replace it.')
                 return
             tx = db.begin()
             cur = tx.execute('insert into challenges (sid, name, title) values (?, ?, ?)',
@@ -108,8 +108,8 @@ class RogoDriver(cmdlib.Cmd):
     # -- local project config ---------------------------------
 
     def do_init(self, arg):
-        """create .rogo file in current directory"""
-        if os.path.exists('.rogo'):
+        """create .tanco file in current directory"""
+        if os.path.exists('.tanco'):
             print("Already initialized.")
             return
         if not (who := self.client.whoami()):
@@ -142,15 +142,15 @@ class RogoDriver(cmdlib.Cmd):
             insert into attempts (uid, chid, code) values (?, ?, ?)
             """, [uid, chid, aid])
         cfg = Config(attempt=aid)
-        with open('.rogo', 'w') as f:
+        with open('.tanco', 'w') as f:
             f.write(cfg.to_json())
         print('Project initialized.')
-        print('Edit .rogo to configure how to run your project.')
-        print('Then run `rogo check` to make sure rogo can run your program.')
+        print('Edit .tanco to configure how to run your project.')
+        print('Then run `tanco check` to make sure tanco can run your program.')
 
     @staticmethod
     def do_check(arg):
-        runner.check(['rogo']+[x for x in arg.split(' ') if x != ''])
+        runner.check(['tanco']+[x for x in arg.split(' ') if x != ''])
 
     def do_show(self, arg=None):
         """show the current test prompt"""
@@ -159,20 +159,20 @@ class RogoDriver(cmdlib.Cmd):
         self.result = (cfg.attempt, tests)
         if tests:
             if arg == '-n':
-                print('You already have the next test. Calling `rogo show`:')
+                print('You already have the next test. Calling `tanco show`:')
                 print()
             t = TestDescription(**tests[0])
             print(f'#[{t.name}]: {t.head}')
             print()
             print(t.body)
             print()
-            print("Use 'rogo test' to run the tests.")
+            print("Use 'tanco test' to run the tests.")
         elif arg == '-n':
             pass
         else:
             print("All known tests have passed.")
-            print("Use `rogo test` to check that they still pass.")
-            print("Use `rogo next` to fetch the next test.")
+            print("Use `tanco test` to check that they still pass.")
+            print("Use `tanco next` to fetch the next test.")
 
     def do_next(self, _arg):
         """fetch the next test"""
@@ -209,7 +209,7 @@ class RogoDriver(cmdlib.Cmd):
     @staticmethod
     def do_test(arg):
         """Run the tests"""
-        runner.main(['rogo']+[x for x in arg.split(' ') if x != ''])
+        runner.main(['tanco']+[x for x in arg.split(' ') if x != ''])
 
     @staticmethod
     def do_q(_arg):
@@ -222,14 +222,14 @@ class RogoDriver(cmdlib.Cmd):
 
 
 def show_help():
-    print("rogo command line client")
+    print("tanco command line client")
     print()
-    print("usage: rogo [command]")
+    print("usage: tanco [command]")
     print()
     print("available commands:")
     print()
-    data = [(meth[3:], getattr(RogoDriver, meth).__doc__)
-            for meth in dir(RogoDriver)
+    data = [(meth[3:], getattr(TancoDriver, meth).__doc__)
+            for meth in dir(TancoDriver)
             if meth.startswith('do_')]
     data.append(['shell', 'Run an interactive shell'])
     for cmd, doc in data:
@@ -238,7 +238,7 @@ def show_help():
 
 
 def main():
-    d = RogoDriver()
+    d = TancoDriver()
     if "-q" in sys.argv:
         sys.argv.remove('-q')
         d.prompt = ""

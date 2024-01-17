@@ -1,6 +1,6 @@
-#+title: rogo self tests
-#+name: rogo
-#+server: https://rogo.tangentcode.com/
+#+title: tanco self tests
+#+name: tanco
+#+server: https://tanco.tangentcode.com/
 
 # This file is created with org-mode, an awesome outliner and
 # personal information manager for emacs. In org-mode, this file
@@ -14,7 +14,7 @@
 #+begin_src
 > q
 = q : quit
-: The 'q' command instructs rogo-shell to quit.
+: The 'q' command instructs tanco-shell to quit.
 :
 : the shell should not produce any output unless
 : explicitly instructed to do so.
@@ -27,7 +27,7 @@
 > challenges
 ["learntris", "a famous falling blocks game"]
 ["other", "some other course"]
-["rogo", "rogo self tests"]
+["tanco", "tanco self tests"]
 = challenges : list available challenges
 #+end_src
 

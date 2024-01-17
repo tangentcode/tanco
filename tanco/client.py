@@ -5,13 +5,13 @@ from . import database as db
 from .model import TestResult
 
 
-class RogoClient:
+class TancoClient:
     """
-    Client for the Rogo API
+    Client for the Tanco API
     """
 
     def __init__(self, url=None):
-        self.url = url or os.environ.get('ROGO_SERVER', 'https://rogo.tangentcode.com/')
+        self.url = url or os.environ.get('TANCO_SERVER', 'https://tanco.tangentcode.com/')
         if not self.url.endswith('/'):
             self.url += '/'
 

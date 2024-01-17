@@ -1,4 +1,4 @@
--- sqlite schema for rogo (both client and server)
+-- sqlite schema for tanco (both client and server)
 
 create table meta (
     key text primary key,
@@ -14,8 +14,8 @@ create table servers (
     info text not null);
 
 insert into servers (url, name, info) values
-  ('https://rogo.tangentcode.com/', 'tangentcode',
-   'The original rogo server at tangentcode.com');
+  ('https://tanco.tangentcode.com/', 'tangentcode',
+   'The original tanco server at tangentcode.com');
 
 
 create table users (

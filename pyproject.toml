@@ -1,5 +1,5 @@
 [project]
-name = "rogo"
+name = "tanco"
 version = "0.1.1"
 description='A tool for test-driven teaching.'
 dependencies = [
@@ -16,11 +16,11 @@ requires-python = ">=3.11"
 
 [project.urls]
 "Homepage" = "https://tangentcode.com/"
-"Source" = "https://github.com/tangentstorm/rogo"
-"Live Server" = "https://rogo.tangentcode.com/"
+"Source" = "https://github.com/tangentstorm/tanco"
+"Live Server" = "https://tanco.tangentcode.com/"
 
 [project.scripts]
-rogo = "rogo.driver:main"
+tanco = "tanco.driver:main"
 
 
 [build-system]

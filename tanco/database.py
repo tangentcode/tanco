@@ -1,7 +1,7 @@
 import sqlite3
 from . import model as m
 
-SDB_PATH = 'rogo.sdb'  # TODO: make this configurable
+SDB_PATH = 'tanco.sdb'  # TODO: make this configurable
 
 
 def query(sql, *a, **kw):

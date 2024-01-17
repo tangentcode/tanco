@@ -1,8 +1,8 @@
 # sqlite database
-rogo.sdb
+tanco.sdb
 
 # private key for server
-rogo_auth_key.*
+tanco_auth_key.*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -1,5 +1,5 @@
 """
-Implements a finite state machine to extract rogo
+Implements a finite state machine to extract tanco
 test descriptions from org files.
 
 The org file format is described here:

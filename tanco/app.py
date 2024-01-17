@@ -22,7 +22,7 @@ queues: {'pretoken': [asyncio.Queue]} = {}
 observers: {'attempt': [asyncio.Queue]} = {}
 
 JWT_OBJ = jwtlib.JWT()
-JWT_KEY = jwtlib.jwk_from_pem(open('rogo_auth_key.pem', 'rb').read())
+JWT_KEY = jwtlib.jwk_from_pem(open('tanco_auth_key.pem', 'rb').read())
 
 # -------------------------------------------------------------
 # mini web framework to wrap htmx fragments in a layout
