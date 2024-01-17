@@ -15,12 +15,19 @@ nav ul li { padding: 4px; margin-right: 1px; }
 nav ul li:before { content: " | "; }
 nav ul li:first-child:before { content: ""; }
 nav ul li.active { background-color: #cfcfcf; }
+
 a { color: #333; }
 a:hover { color: #66ccffff; color: #0162c2ff; }
 
-
 #progress { float:left; border-right: solid 1px #333;
-   margin-right:10px; padding-right: 10px;
-   height:90%;}
+ margin-right:10px; padding-right: 10px;
+ height:90%;}
 
-#user { position:absolute; top: 20px; left: 500px;  }
+#user { position:absolute; top: 20px; right: calc(100% - 480px); }
+
+#ws { position:absolute; top: 30px; left: 490px;
+ width: 10px; height: 10px; border-radius: 10px;
+ border: solid #333 1px; background: #999; }
+.has-tooltip:hover .tooltip { visibility: visible; font-size:smaller; }
+.tooltip { visibility: hidden; background: white;
+ border: solid #333 1px; padding: 4px;  position:absolute }

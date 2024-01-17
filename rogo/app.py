@@ -164,7 +164,7 @@ async def attempt_live(code):
     try:
         while True:
             html = await q.get()
-            await ws.send(f'<span id="live">{html}</span>')
+            await ws.send(f'<span id="test-detail">{html}</span>')
     except asyncio.CancelledError:
         observers[code].remove(q)
 
