@@ -4,6 +4,23 @@
 
 body { background: #d6ca96 }
 body { font-family: 'Cairo', sans-serif; }
-h1 { font-family: 'Squada One', sans-serif; margin-top: 0; padding-top: 10px; }
+h1 { font-family: 'Squada One', sans-serif; margin:0; padding-top: 10px; }
 h2, h3 { font-family: 'Oswald', sans-serif; margin:0;}
 
+nav ul {
+ list-style-type: none;
+ margin: 0; padding: 0;
+ display: flex; }
+nav ul li { padding: 4px; margin-right: 1px; }
+nav ul li:before { content: " | "; }
+nav ul li:first-child:before { content: ""; }
+nav ul li.active { background-color: #cfcfcf; }
+a { color: #333; }
+a:hover { color: #66ccffff; color: #0162c2ff; }
+
+
+#progress { float:left; border-right: solid 1px #333;
+   margin-right:10px; padding-right: 10px;
+   height:90%;}
+
+#user { position:absolute; top: 20px; left: 500px;  }

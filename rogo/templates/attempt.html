@@ -37,16 +37,16 @@
 
 
 <!-- list progress (passed tests) -->
-<h2>progress</h2>
+<div id="progress">
+<h2>completed tests</h2>
 <ul hx-target="#test-detail">
 {% for p in data.progress %}
-  <li> {{ p.ts }}
-    <a href="/a/{{ data.code }}/t/{{ p.t_name }}">{{ p.t_name }}</a>
-  </li>
+  <li><a href="/a/{{ data.code }}/t/{{ p.t_name }}">{{ p.t_name }}</a></li>
 {% endfor %}
 </ul>
-<div id="test-detail">
+</div>
 
+<div id="test-detail">
 </div>
 
 </span>
