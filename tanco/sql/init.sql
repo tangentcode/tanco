@@ -50,7 +50,8 @@ create table attempts (
     ts datetime not null default current_timestamp,
     code text unique not null,
     name text,
-    done integer,
+    done integer not null default 0,
+    next integer references tests(id),
     is_private integer not null default 0,
     lang text,
     repo text);
