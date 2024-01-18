@@ -51,7 +51,7 @@ create table attempts (
     code text unique not null,
     name text,
     done integer not null default 0,
-    next integer references tests(id),
+    focus integer references tests(id),
     is_private integer not null default 0,
     lang text,
     repo text);
