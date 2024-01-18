@@ -14,7 +14,7 @@ https://www.youtube.com/@tangentstream
 # pip install tanco
 
 # but for now, this is still very alpha stage, so:
-git clone https://github.com/tangentstorm/tanco.git
+git clone https://github.com/tangentcode/tanco.git
 cd tanco
 pip install -e .
 ```
