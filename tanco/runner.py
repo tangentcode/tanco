@@ -181,7 +181,7 @@ def run_tests(cfg: Config):
             for line in test.ilines:
                 print(line)
             print()
-            e.print_error()
+            fail(e.error_lines(), test)
 
 
 def find_target(cfg: Config, argv: [str]) -> Config:
@@ -209,20 +209,6 @@ def get_custom_cfg(argv: [str]):
     return cfg
 
 
-def handle_unexpected_error():
-    print('-'*50)
-    traceback.print_exc()
-    print('-'*50)
-    print("Oh no! Tanco encountered an unexpected problem while")
-    print("attempting to run your program. Please report the above")
-    print("traceback in the issue tracker, so that we can help you")
-    print("with the problem and provide a better error message in")
-    print("the future.")
-    print()
-    print("  https://github.com/tangentstorm/tanco/issues")
-    print()
-
-
 def check(argv: [str]):
     cfg = get_custom_cfg(argv)
     program = spawn(cfg.program_args, cfg.use_shell)
@@ -243,25 +229,46 @@ def check(argv: [str]):
         print("Run `tanco next` to start the first test.")
 
 
+def fail(msg: [str], t: TestDescription = None, actual: [str] = None):
+    for line in msg:
+        print(line)
+    sys.exit()
+
+
+def handle_unexpected_error():
+    fail(['-'*50,
+          traceback.format_exc(),
+          '-'*50,
+          "Oh no! Tanco encountered an unexpected problem while",
+          "attempting to run your program. Please report the above",
+          "traceback in the issue tracker, so that we can help you",
+          "with the problem and provide a better error message in",
+          "the future.",
+          "",
+          "  https://github.com/tangentcode/tanco/issues"])
+
+
 def main(argv: [str]):
     cfg = get_custom_cfg(argv)
     cmdline = cfg.program_args
     cmd = cmdline[0]
     try:
         run_tests(cfg)
+    except SystemExit:
+        pass
     except NoTestPlanError as e:
-        print('No challenge selected.')
-        print('Use `tanco init` or set TEST_PLAN environment variable.')
+        fail(['No challenge selected.'
+              'Use `tanco init` or set TEST_PLAN environment variable.'])
     except EnvironmentError as e:
         if e.errno in [errno.EPERM, errno.EACCES]:
-            print(e)
-            print("Couldn't run %r due to a permission error." % cmd)
-            print("Make sure your program is marked as an executable.")
+            fail([str(e),
+                  "Couldn't run %r due to a permission error." % cmd,
+                  "Make sure your program is marked as an executable."])
         elif e.errno == errno.EPIPE:
-            print(); print(e)
-            print("%r quit before reading any input." % cmd)
-            print("Make sure you are reading commands from standard input,")
-            print("not trying to take arguments from the command line.")
+            fail([str(e),
+                  "%r quit before reading any input." % cmd,
+                  "Make sure you are reading commands from standard input,"
+                  "not trying to take arguments from the command line."])
         else:
             handle_unexpected_error()
     except:

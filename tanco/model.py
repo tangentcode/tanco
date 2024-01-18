@@ -36,22 +36,30 @@ class TestFailure(AssertionError):
 
 class LineDiffFailure(TestFailure):
 
-    def __init__(self, diff: [str]):
+    def __init__(self, actual: [str], diff: [str]):
+        self.actual = actual
         self.diff = diff
 
     @staticmethod
     def from_lines(actual: [str], expected: [str]):
-        return LineDiffFailure(list(difflib.Differ().compare(actual, expected)))
+        return LineDiffFailure(actual, list(difflib.Differ().compare(actual, expected)))
+
+    @staticmethod
+    def from_data(data: dict) -> 'LineDiffFailure':
+        return LineDiffFailure(data['actual'], data['diff'])
 
     def to_data(self):
         return {
             'kind': 'diff',
-            'data': self.diff}
+            'data': {'actual': self.actual, 'diff': self.diff}}
+
+    def error_lines(self):
+        return (["---- how to patch your output to pass the test ----"]
+                + self.diff)
 
     def print_error(self):
-        print("---- how to patch your output to pass the test ----")
-        diff = '\n'.join(self.diff)
-        print(diff)
+        for line in self.error_lines():
+            print(line)
 
 
 @dataclass
@@ -59,17 +67,17 @@ class TestResult:
     kind: ResultKind
     error: TestFailure = None
     rule: ValidationRule = None
+    actual: [str] = field(default_factory=list)
 
     @staticmethod
     def from_data(data: dict) -> 'TestResult':
-
         res = TestResult(kind=ResultKind[data['kind']])
         match res.kind:
             case ResultKind.AskServer: raise RecursionError()
             case ResultKind.Fail:
                 err = data['error']
                 match err['kind']:
-                    case 'diff': res.error = LineDiffFailure(diff=err['data'])
+                    case 'diff': res.error = LineDiffFailure.from_data(err['data'])
                     case _: raise ValueError(f"unknown error kind: {err['kind']}")
             case ResultKind.Pass:
                 rule = data['rule']
@@ -82,7 +90,8 @@ class TestResult:
         """return raw data for json serialization"""
         kind = self.kind.name
         match kind:
-            case 'Fail': return {'kind': kind, 'error': self.error.to_data()}
+            case 'Fail': return {'kind': kind, 'actual': self.actual,
+                                 'error': self.error.to_data()}
             case 'Pass': return {'kind': kind, 'rule': self.rule.to_data()}
             case 'AskServer': raise NotImplementedError()
 
@@ -117,7 +126,7 @@ class TestDescription:
             return TestResult(ResultKind.Pass, rule=rule)
         else:
             e = LineDiffFailure.from_lines(actual=actual, expected=self.olines)
-            return TestResult(ResultKind.Fail, error=e)
+            return TestResult(ResultKind.Fail, error=e, actual=actual)
 
 
 @dataclass
