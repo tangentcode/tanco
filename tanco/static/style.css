@@ -17,7 +17,7 @@ nav ul li:first-child:before { content: ""; }
 nav ul li.active { background-color: #cfcfcf; }
 
 a { color: #333; }
-a:hover { color: #66ccffff; color: #0162c2ff; }
+a:hover { color: #0162c2ff; }
 
 #progress { float:left; border-right: solid 1px #333;
  margin-right:10px; padding-right: 10px;

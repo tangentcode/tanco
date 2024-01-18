@@ -1,4 +1,3 @@
-
 <span hx-replace-url="false">
 
 <script src="https://unpkg.com/htmx.org/dist/ext/ws.js"></script>
@@ -43,17 +42,25 @@
 </script>
 
 
-<!-- list progress (passed tests) -->
-<div id="progress">
-<h3>completed tests</h3>
-<ul hx-target="#test-detail">
-{% for p in data.progress %}
-  <li><a href="/a/{{ data.code }}/t/{{ p.t_name }}">{{ p.t_name }}</a></li>
-{% endfor %}
-</ul>
-</div>
+<div id="attempt">
+  <style>
+    /** flexbox with narrow progress in left column, wide test detail in right column */
+    #attempt { display: flex; }
+    #progress { flex: 1; max-width: 150px; }
+    #test-detail { flex: 3; }
+  </style>
+  <!-- list progress (passed tests) -->
+  <div id="progress">
+    <h3>tests</h3>
+    <ul hx-target="#test-detail">
+    {% for p in data.progress %}
+      <li><a href="/a/{{ data.code }}/t/{{ p.t_name }}">{{ p.t_name }}</a></li>
+    {% endfor %}
+    </ul>
+  </div>
 
-<span id="test-detail">
-</span>
+  <div id="test-detail">
+  </div>
+</div>
 
 </span>
