@@ -4,6 +4,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 
 ResultKind = Enum('ResultKind', 'Pass Fail AskServer')
+Transition = Enum('Transition', 'Pass Next Fail')
+AttemptState = Enum('AttemptState', 'Start Build Fix Change Done')
 
 
 class ValidationRule:

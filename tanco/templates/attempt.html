@@ -22,8 +22,7 @@
 
 
 <!-- websocket content -->
-<div id="ws" class="has-tooltip" hx-ext="ws" ws-connect="live"
-     hx-target="#test-detail" >
+<div id="ws" class="has-tooltip" hx-ext="ws" ws-connect="live">
   <div class="tooltip">websocket: <span class="status">waiting to connect</span></div>
 </div>
 <script>
@@ -59,8 +58,15 @@
     </ul>
   </div>
 
-  <div id="test-detail">
+  <div>
+    <h2 id="attempt-state">(state goes here)</h2>
+    <h2 id="attempt-focus">(focus goes here)</h2>
+
+    <div id="test-detail">
+    </div>
+
   </div>
+
 </div>
 
 </span>

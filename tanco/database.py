@@ -124,3 +124,89 @@ def get_attempt_test(code, test_name, uid=None):
     if not rows:
         raise LookupError(f'attempt: {code}, test: {test_name}')
     return test_from_row(rows[0])
+
+
+def set_attempt_state(code, transition: m.Transition, failing_test: str = '') -> (m.AttemptState, str):
+    """set the state of an attempt according to transition table"""
+    try:
+        old = query("""
+            select a.id as aid, a.state, t.name as focus
+            from attempts a left join tests t on a.focus = t.id
+            where a.code=?""", [code])[0]
+    except IndexError:
+        raise LookupError(f'attempt: {code}')
+
+    # o: one-letter code for old state:
+    # 'sbfcd' start build fix change done (the possible states)
+    o = old['state'][0].lower()
+
+    new_focus = None
+
+    # t: one-letter code for transition:
+    # 'XPNO' X:tanco-next P=test pass, N=new fail, O=old fail
+    match transition:
+        case m.Transition.Pass: t = 'P'
+        case m.Transition.Next: t = 'N'  # !! what about `tanco next` but no more tests?
+        case m.Transition.Fail:
+            assert failing_test, "failing test required for Fail transition"
+            row = query("""
+                select t.id, count(p.id) > 0 as is_regression
+                from attempts a, tests t left join progress p on t.id = p.tid
+                where a.id = (:aid) and a.chid = t.chid
+                  and a.id = p.aid and t.name = (:test)
+                group by t.id""", {'aid': old['aid'], 'test': failing_test})[0]
+            new_focus, is_regression = row['id'], row['is_regression']
+            t = 'O' if is_regression else 'F'
+        case _: raise ValueError(f"unknown transition: {transition}")
+
+    # state machine transition table:
+    sm = {'s': {'X': 'b'},
+          'b': {'P': 'c', 'N': 'b', 'O': 'f'},
+          'f': {'O': 'f', 'N': 'b', 'P': 'c'},
+          'c': {'X': '?', 'O': 'f', 'P': 'c'},
+          'd': {'X': 'd', 'O': 'f', 'P': 'd'}}
+
+    # 's.X:b'  # others can't happen (no test until build state)
+    # 's.P:s'  # you pass the 0 tests at the start
+    # 'b.X->ERR'
+    # 'b.P:c'
+    # 'b.N:b'
+    # 'b.O:f'
+    # 'f.O:f'
+    # 'f.N:b'
+    # 'f.P:c'
+    # 'c.P:c'
+    # 'c.N:f'  # really this can't happen because no 'new' test anymore
+    # 'c.O:f'  # all tests are old tests
+    # 'c.X:(b|d)'
+    # 'd.X:d'  # nothing more to do
+    # 'd.P:d'  # you ran the tests just to see them pass
+    # 'd.O:f'  # you put yourself back in 'change' mode without telling us
+
+    # n: one-letter code for new state (same as codes for o)
+    n = sm[o].get(t)
+    if not n:
+        raise ValueError(f"invalid transition: {o}.{t}")
+    elif t == '?':  # c.X ('tanco next' from 'change' state)
+        next_tests = get_next_tests(code)
+        if next_tests:
+            n = 'b'
+            new_focus = next_tests[0]['id']
+        else:
+            n = 'd'
+
+    match n:
+        case 's': new_state = m.AttemptState.Start
+        case 'b': new_state = m.AttemptState.Build
+        case 'f': new_state = m.AttemptState.Fix
+        case 'c': new_state = m.AttemptState.Change
+        case 'd': new_state = m.AttemptState.Done
+        case _: raise ValueError(f"unknown state: {n}")
+
+    commit("""
+        update attempts set state=(:new_state), focus=(:new_focus)
+        where id=(:aid)
+        """, {'new_state': new_state.name.lower(),
+              'new_focus': new_focus, 'aid': old['aid']})
+
+    return new_state, failing_test

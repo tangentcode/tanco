@@ -22,9 +22,16 @@ queues: {'pretoken': [asyncio.Queue]} = {}
 observers: {'attempt': [asyncio.Queue]} = {}
 
 
-async def notify(code, data):
+async def notify(code, data, wrap=True):
+    data = f'<span id="test-detail">{data}</span>' if wrap else data
     for o in observers.get(code, []):
         await o.put(data)
+
+
+async def notify_state(code, state, focus):
+    html = await quart.render_template('state.html', state=state, focus=focus)
+    await notify(code, html, wrap=False)
+
 
 JWT_OBJ = jwtlib.JWT()
 JWT_KEY = jwtlib.jwk_from_pem(open('tanco_auth_key.pem', 'rb').read())
@@ -149,7 +156,7 @@ async def attempt_challenge(name):
 @platonic('/a/<code>', 'attempt.html')
 async def show_attempt(code):
     data = db.query("""
-        select a.code, c.name as c_name, u.username as u_name
+        select a.code, a.state, a.focus, c.name as c_name, u.username as u_name
         from attempts a, challenges c, users u
         where a.code = (:code)
         """, {'code': code})[0]
@@ -169,7 +176,7 @@ async def attempt_live(code):
     try:
         while True:
             html = await q.get()
-            await ws.send(f'<span id="test-detail">{html}</span>')
+            await ws.send(html)
     except asyncio.CancelledError:
         observers[code].remove(q)
 
@@ -213,8 +220,9 @@ async def next_tests_for_attempt(code):
 async def send_attempt_pass(code):
     # TODO: validate the jwt
     # TODO: validate the attempt belongs to the user
-    # TODO: actually update the state table
-    # db.set_
+    state, focus = db.set_attempt_state(code, m.Transition.Pass)
+    assert focus is None, "all tests passed so focus should be None"
+    await notify_state(code, state, focus='')
     await notify(code, await quart.render_template('pass.html'))
     return ['ok']
 
@@ -223,14 +231,18 @@ async def send_attempt_pass(code):
 async def send_attempt_fail(code):
     # TODO: validate the jwt
     # TODO: validate the attempt belongs to the user
-    # TODO: put the attempt in 'fix' mode
     jsn = await quart.request.json
     tr_data = jsn.get('result')
     tr = m.TestResult.from_data(tr_data)
     try:
-        t = db.get_attempt_test(code, jsn.get('test_name'))
+        tn = jsn['test_name']
+        t = db.get_attempt_test(code, tn)
+    except KeyError:
+        return f'unknown test: {tn}', 400
     except LookupError:
-        return "unknown test or attempt", 404
+        return "unknown test or attempt", 400
+    state, focus = db.set_attempt_state(code, m.Transition.Fail, failing_test=tn)
+    await notify_state(code, state, focus)
     html = await quart.render_template('result.html', test=t, result=tr)
     await notify(code, html)
     return ['ok']

@@ -50,7 +50,9 @@ create table attempts (
     ts datetime not null default current_timestamp,
     code text unique not null,
     name text,
-    done integer not null default 0,
+    done datetime default null,
+    state text default 'start'
+          check (state in ('start','build','change','fix','done')),
     focus integer references tests(id),
     is_private integer not null default 0,
     lang text,
