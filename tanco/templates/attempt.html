@@ -59,9 +59,12 @@
   </div>
 
   <div>
-    <h2 id="attempt-state">(state goes here)</h2>
-    <h2 id="attempt-focus">(focus goes here)</h2>
-
+    <h2 id="attempt-state">state: {{ data.state }}</h2>
+    {% if data.focus %}
+    <h2 id="attempt-focus">focus: {{ data.focus }}</h2>
+    {% else %}
+    <h2 id="attempt-focus">focus is clear</h2>
+    {% endif %}
     <div id="test-detail">
     </div>
 

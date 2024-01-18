@@ -156,8 +156,8 @@ async def attempt_challenge(name):
 @platonic('/a/<code>', 'attempt.html')
 async def show_attempt(code):
     data = db.query("""
-        select a.code, a.state, a.focus, c.name as c_name, u.username as u_name
-        from attempts a, challenges c, users u
+        select a.code, a.state, t.name as focus, c.name as c_name, u.username as u_name
+        from challenges c, users u, attempts a left join tests t on a.focus = t.id
         where a.code = (:code)
         """, {'code': code})[0]
     data['progress'] = db.query("""
