@@ -21,6 +21,11 @@ queues: {'pretoken': [asyncio.Queue]} = {}
 
 observers: {'attempt': [asyncio.Queue]} = {}
 
+
+async def notify(code, data):
+    for o in observers.get(code, []):
+        await o.put(data)
+
 JWT_OBJ = jwtlib.JWT()
 JWT_KEY = jwtlib.jwk_from_pem(open('tanco_auth_key.pem', 'rb').read())
 
@@ -173,8 +178,7 @@ async def attempt_live(code):
 async def attempt_tmp(code):
     """temp thing to trigger websocket updates"""
     data = (await quart.request.form).get('data')
-    for o in observers.get(code, []):
-        await o.put(data)
+    await notify(code, data)
     return 'got: ' + data
 
 
@@ -205,28 +209,45 @@ async def next_tests_for_attempt(code):
     return rows
 
 
+@app.route('/a/<code>/pass', methods=['POST'])
+async def send_attempt_pass(code):
+    # TODO: validate the jwt
+    # TODO: validate the attempt belongs to the user
+    # TODO: actually update the state table
+    # db.set_
+    await notify(code, await quart.render_template('pass.html'))
+    return ['ok']
+
+
+@app.route('/a/<code>/fail', methods=['POST'])
+async def send_attempt_fail(code):
+    # TODO: validate the jwt
+    # TODO: validate the attempt belongs to the user
+    # TODO: put the attempt in 'fix' mode
+    jsn = await quart.request.json
+    tr_data = jsn.get('result')
+    tr = m.TestResult.from_data(tr_data)
+    try:
+        t = db.get_attempt_test(code, jsn.get('test_name'))
+    except LookupError:
+        return "unknown test or attempt", 404
+    html = await quart.render_template('result.html', test=t, result=tr)
+    await notify(code, html)
+    return ['ok']
+
+
 @app.route('/a/<code>/check/<test_name>', methods=['POST'])
 async def check_test_for_attempt(code, test_name):
-
-    # fetch the expected output
-    # TODO: update to allow arbitrary validation rules
-    rows = db.query(
-        """
-        select t.name, t.head, t.body, t.ilines, t.olines
-        from attempts a left join tests t on a.chid=t.chid
-        where a.code=? and t.name=?
-        """, [code, test_name])
-
-    # the actual output from the test run is the request body (json)
-    # TODO: validate current user owns the attempt
-    if not rows:
-        return "unknown test or attempt", 404
     actual = (await quart.request.json).get('actual')
     if actual is None:
         return "bad request: no 'actual' field in post", 400
 
-    # right now we only use the LineDiffRule
-    t = db.test_from_row(rows[0])
+    # fetch the expected output
+    # TODO: update to allow arbitrary validation rules
+    try:
+        t = db.get_attempt_test(code, test_name)
+    except LookupError:
+        return "unknown test or attempt", 404
 
     r = t.check_output(actual)
     print('test result:', r.to_data())

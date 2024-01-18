@@ -53,6 +53,22 @@ class TancoClient:
             raise LookupError('You must be logged in to get next test.')
         return self.post('a/' + attempt + '/next', {'jwt': who['jwt']})
 
+    def send_pass(self, attempt):
+        who = self.whoami()
+        if not who:
+            raise LookupError('You must be logged in to send result.')
+        return self.post('a/' + attempt + '/pass', {
+            'jwt': who['jwt']})
+
+    def send_fail(self, attempt, test_name: str, result: TestResult):
+        who = self.whoami()
+        if not who:
+            raise LookupError('You must be logged in to send result.')
+        return self.post('a/' + attempt + '/fail', {
+            'jwt': who['jwt'],
+            'test_name': test_name,
+            'result': result.to_data()})
+
     def check_output(self, attempt: str, test_name: str, actual: [str]):
         who = self.whoami()
         if not who:

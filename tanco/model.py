@@ -31,7 +31,12 @@ class LineDiffRule(ValidationRule):
 
 
 class TestFailure(AssertionError):
-    pass
+    def error_lines(self):
+        raise NotImplementedError()
+
+    def print_error(self):
+        for line in self.error_lines():
+            print(line)
 
 
 class LineDiffFailure(TestFailure):
@@ -57,9 +62,6 @@ class LineDiffFailure(TestFailure):
         return (["---- how to patch your output to pass the test ----"]
                 + self.diff)
 
-    def print_error(self):
-        for line in self.error_lines():
-            print(line)
 
 
 @dataclass

@@ -110,3 +110,17 @@ def save_rule(attempt: str, test: str, rule: dict):
             select a.chid from attempts a
             where a.code = ?)
         """, ['\n'.join(rule['data']), test, attempt])
+
+
+def get_attempt_test(code, test_name, uid=None):
+    # TODO: validate current user owns the attempt
+    rows = query(
+        """
+        select t.name, t.head, t.body, t.ilines, t.olines
+        from attempts a left join tests t on a.chid=t.chid
+        where a.code=? and t.name=?
+        """, [code, test_name])
+    # the actual output from the test run is the request body (json)
+    if not rows:
+        raise LookupError(f'attempt: {code}, test: {test_name}')
+    return test_from_row(rows[0])

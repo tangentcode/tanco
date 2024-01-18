@@ -125,7 +125,10 @@ def local_check_output(cfg: m.Config, actual: [str], test: TestDescription):
     local_res = test.check_output(actual)
     match local_res.kind:
         case ResultKind.Pass: pass
-        case ResultKind.Fail: raise local_res.error
+        case ResultKind.Fail:
+            # a regression! (test failed and have the rule,
+            # so we have to tell the server)
+            fail(cfg, local_res.error.error_lines(), test.name, local_res)
         case ResultKind.AskServer:
             client = TancoClient()
             remote_res = client.check_output(cfg.attempt, test.name, actual)
@@ -167,6 +170,7 @@ def run_tests(cfg: Config):
             print()
             print("When you're ready, run `tanco next` to start work on the next feature.")
             print()
+            TancoClient().send_pass(cfg.attempt)
     except (subprocess.TimeoutExpired, TestFailure) as e:
         print()
         print("%d of %d tests passed." % (num_passed, len(tests)))
@@ -181,7 +185,7 @@ def run_tests(cfg: Config):
             for line in test.ilines:
                 print(line)
             print()
-            fail(e.error_lines(), test)
+            fail(cfg, e.error_lines(), test)
 
 
 def find_target(cfg: Config, argv: [str]) -> Config:
@@ -222,30 +226,40 @@ def check(argv: [str]):
     ])
     try:
         run_test(cfg, program, test)
+    except SystemExit:
+        raise
     except:
-        handle_unexpected_error()
+        handle_unexpected_error(cfg)
     else:
         print(f"Tanco ran {' '.join(cfg.program_args)} successfully.")
         print("Run `tanco next` to start the first test.")
 
 
-def fail(msg: [str], t: TestDescription = None, actual: [str] = None):
+def fail(cfg: Config, msg: [str], tn: str = None, tr: m.TestResult = None):
     for line in msg:
         print(line)
+    if tn and tr:
+        assert tr.kind == ResultKind.Fail, "Expected a failed test."
+        c = TancoClient()
+        c.send_fail(cfg.attempt, tn, tr)
     sys.exit()
 
 
-def handle_unexpected_error():
-    fail(['-'*50,
-          traceback.format_exc(),
-          '-'*50,
-          "Oh no! Tanco encountered an unexpected problem while",
-          "attempting to run your program. Please report the above",
-          "traceback in the issue tracker, so that we can help you",
-          "with the problem and provide a better error message in",
-          "the future.",
-          "",
-          "  https://github.com/tangentcode/tanco/issues"])
+def handle_unexpected_error(cfg: Config):
+    try:
+        fail(cfg, ['-'*50,
+                   traceback.format_exc(),
+                   '-'*50,
+                   "Oh no! Tanco encountered an unexpected problem while",
+                   "attempting to run your program. Please report the above",
+                   "traceback in the issue tracker, so that we can help you",
+                   "with the problem and provide a better error message in",
+                   "the future.",
+                   "",
+                   "  https://github.com/tangentcode/tanco/issues"])
+    except Exception as e:
+        traceback.print_exception(type(e), e, None)
+        sys.exit()
 
 
 def main(argv: [str]):
@@ -257,22 +271,22 @@ def main(argv: [str]):
     except SystemExit:
         pass
     except NoTestPlanError as e:
-        fail(['No challenge selected.'
-              'Use `tanco init` or set TEST_PLAN environment variable.'])
+        fail(cfg, ['No challenge selected.'
+                   'Use `tanco init` or set TEST_PLAN environment variable.'])
     except EnvironmentError as e:
         if e.errno in [errno.EPERM, errno.EACCES]:
-            fail([str(e),
-                  "Couldn't run %r due to a permission error." % cmd,
-                  "Make sure your program is marked as an executable."])
+            fail(cfg, [str(e),
+                       "Couldn't run %r due to a permission error." % cmd,
+                       "Make sure your program is marked as an executable."])
         elif e.errno == errno.EPIPE:
-            fail([str(e),
-                  "%r quit before reading any input." % cmd,
-                  "Make sure you are reading commands from standard input,"
-                  "not trying to take arguments from the command line."])
+            fail(cfg, [str(e),
+                       "%r quit before reading any input." % cmd,
+                       "Make sure you are reading commands from standard input,",
+                       "not trying to take arguments from the command line."])
         else:
-            handle_unexpected_error()
+            handle_unexpected_error(cfg)
     except:
-        handle_unexpected_error()
+        handle_unexpected_error(cfg)
 
 
 if __name__ == '__main__':
