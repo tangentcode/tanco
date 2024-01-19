@@ -23,7 +23,7 @@ a:hover { color: #0162c2ff; }
  margin-right:10px; padding-right: 10px;
  height:90%;}
 
-#user { position:absolute; top: 20px; right: calc(100% - 480px); }
+#whoami { position:absolute; top: 20px; right: calc(100% - 480px); }
 
 #ws { position:absolute; top: 30px; left: 490px;
  width: 10px; height: 10px; border-radius: 10px;

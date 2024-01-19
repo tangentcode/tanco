@@ -21,6 +21,8 @@ queues: {'pretoken': [asyncio.Queue]} = {}
 
 observers: {'attempt': [asyncio.Queue]} = {}
 
+sessions: {'key': {'uid': int}} = {}
+
 
 async def notify(code, data, wrap=True):
     data = f'<span id="test-detail">{data}</span>' if wrap else data
@@ -134,7 +136,7 @@ async def uid_from_request():
         raise LookupError('no jwt given')
     r = db.query('select uid from tokens where jwt=?', [j])
     if not r: raise LookupError('unrecognized jwt')
-    return r[0]['uid']
+    return r[0]['authid']
 
 
 @app.route('/c/<name>/attempt', methods=['POST'])
@@ -274,12 +276,36 @@ async def check_test_for_attempt(code, test_name):
     return r.to_data()
 
 
+# == Website Authentication ===================================
+
+@app.route('/whoami', methods=['GET'])
+async def get_whoami():
+    skey = quart.request.cookies.get('sess', '')
+    uid = sessions.get(skey, {}).get('uid')
+    data = db.query('select username from users where id=?', [uid])[0] if uid else {}
+    return await quart.render_template('whoami.html', uid=uid, data=data)
+
+
 @app.route('/login', methods=['GET'])
 async def get_login():
     return await quart.render_template('login.html')
 
 
-# == Authentication for Command Line Client ===
+@app.route('/login/success', methods=['POST'])
+async def post_login_success():
+    frm = await quart.request.form
+    uid, data = decode_access_token(frm.get('accessToken'))
+    key = random_string()
+    while key in sessions:
+        key = random_string()
+    sessions[key] = {'uid': uid}
+    whence = frm.get('whence', '/')
+    res = quart.redirect(whence)
+    res.set_cookie('sess', key)
+    return res
+
+
+# == Authentication for Command Line Client ===================
 
 @app.route('/auth/login', methods=['GET'])
 async def get_auth_login():
@@ -330,29 +356,32 @@ async def post_auth_jwt():
     return {'token': jwt}
 
 
-@app.route('/auth/success', methods=['POST'])
-async def post_auth_success():
-    frm = await quart.request.form
-    pre = frm.get('preToken')
-    ac0 = frm.get('accessToken')
-    acc = JWT_OBJ.decode(ac0, do_verify=False)
+def decode_access_token(acc0):
+    """returns uid, token_data"""
     # TODO: validate acc against auth provider (firebase)
     # (otherwise attacker could just send any token)
-
-    data = {'uid': acc['sub'], 'eml': acc['email']}
-    jwt = JWT_OBJ.encode(data, JWT_KEY, alg='RS256')
-
+    acc = JWT_OBJ.decode(acc0, do_verify=False)
     # TODO: move this to a real signup process
     sid = 1  # TODO: validate server
     # TODO: use real usernames
-    uid = db.commit("""
-      replace into users (sid, authid, username)
-      values (?, ?, ?)
-      """, [1, acc['sub'], acc['email']])
+    authid = acc['sub']
+    username = acc['email']
+    uid = db.uid_from_tokendata(sid, authid, username)
+    token_data = {'authid': authid, 'username': username}
+    return uid, token_data
+
+
+@app.route('/auth/success', methods=['POST'])
+async def post_auth_success():
+    frm = await quart.request.form
+    uid, data = decode_access_token(frm.get('accessToken'))
+    jwt = JWT_OBJ.encode(data, JWT_KEY, alg='RS256')
+
     db.commit("insert into tokens (uid, jwt) values (?, ?)",
               [uid, jwt])
 
     # now tell jwt to the listening command line client
+    pre = frm.get('preToken')
     try:
         q = queues[pre]
         print("queues[pre]:", q)

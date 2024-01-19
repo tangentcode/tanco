@@ -33,11 +33,7 @@ class TancoDriver(cmdlib.Cmd):
         webbrowser.open(self.client.url + '/auth/login?pre=' + pre)
         jwt = self.client.get_jwt(pre=pre)
         data = jwtlib.JWT().decode(jwt, do_verify=False)  # TODO: verify
-
-        # TODO: have real usernames
-        uid = db.commit(
-            'insert into users (sid, authid, username) values (?, ?, ?)',
-            [sid, data['uid'], data['eml']])
+        uid = db.uid_from_tokendata(sid, data['authid'], data['username'])
         db.commit('insert into tokens (uid, jwt) values (?, ?)', [uid, jwt])
 
     def do_whoami(self, _arg):

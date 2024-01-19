@@ -210,3 +210,15 @@ def set_attempt_state(code, transition: m.Transition, failing_test: str = '') ->
               'new_focus': new_focus, 'aid': old['aid']})
 
     return new_state, failing_test
+
+
+def uid_from_tokendata(sid, authid, username):
+    rows = query("select id from users where sid=? and authid=?", [sid, authid])
+    if rows:
+        uid = rows[0]['id']
+    else:
+        uid = commit("""
+          insert into users (sid, authid, username)
+          values (?, ?, ?)
+          """, [sid, authid, username])
+    return uid
