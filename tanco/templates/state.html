@@ -1,6 +1,1 @@
-<h2 id="attempt-state">attempt state: {{ state.name }}</h2>
-{% if focus %}
-<h2 id="attempt-focus">focus: {{ focus }}</h2>
-{% else %}
-<h2 id="attempt-focus">focus is clear</h2>
-{% endif %}
+<h2 id="attempt-state">state: {{ data.state.name.lower() }} {{ data.focus or '' }}</h2>

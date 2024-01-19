@@ -59,12 +59,8 @@
   </div>
 
   <div>
-    <h2 id="attempt-state">state: {{ data.state }}</h2>
-    {% if data.focus %}
-    <h2 id="attempt-focus">focus: {{ data.focus }}</h2>
-    {% else %}
-    <h2 id="attempt-focus">focus is clear</h2>
-    {% endif %}
+    {% include "state.html" %}
+
     <div id="test-detail">
     </div>
 

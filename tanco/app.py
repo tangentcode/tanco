@@ -31,7 +31,8 @@ async def notify(code, data, wrap=True):
 
 
 async def notify_state(code, state, focus):
-    html = await quart.render_template('state.html', state=state, focus=focus)
+    data = dict(state=state, focus=focus)
+    html = await quart.render_template('state.html', data=data)
     await notify(code, html, wrap=False)
 
 
@@ -162,6 +163,7 @@ async def show_attempt(code):
         from challenges c, users u, attempts a left join tests t on a.focus = t.id
         where a.code = (:code)
         """, {'code': code})[0]
+    data['state'] = m.AttemptState[data['state'].capitalize()]
     data['progress'] = db.query("""
         select t.name as t_name, p.ts from attempts a, tests t, progress p
         where a.code = (:code) and a.id = p.aid and p.tid = t.id
