@@ -6,20 +6,6 @@
 
 <h2>{{ data.c_name }} attempt by {{ data.u_name }}</h2>
 
-<!-- temp form to trigger websocket -->
-<details>
-  <summary> ws tester</summary>
-  <form id="poster" action="{{ url }}/tmp" method="post"
-        hx-boost="true" hx-target="#response">
-    <input type="text" name="data" value="test" placeholder="data">
-    <br/>
-    <input type="submit" value="submit">
-  </form>
-  <div id="response">
-    ((form response))
-  </div>
-</details>
-
 
 <!-- websocket content -->
 <div id="ws" class="has-tooltip" hx-ext="ws" ws-connect="live">

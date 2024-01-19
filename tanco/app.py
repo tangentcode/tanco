@@ -221,14 +221,6 @@ async def attempt_live(code):
         observers[code].remove(q)
 
 
-@app.route('/a/<code>/tmp', methods=['POST'])
-async def attempt_tmp(code):
-    """temp thing to trigger websocket updates"""
-    data = (await quart.request.form).get('data')
-    await notify(code, data)
-    return 'got: ' + data
-
-
 @platonic('/a/<code>/t/<name>', 'test.html')
 @require_uid
 async def show_test(**kw):
