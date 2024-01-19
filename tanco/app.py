@@ -176,6 +176,7 @@ async def attempt_live(code):
     global observers
     observers.setdefault(code, []).append(q)
     try:
+        await ws.send('')
         while True:
             html = await q.get()
             await ws.send(html)
