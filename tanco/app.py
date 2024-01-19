@@ -21,6 +21,48 @@ queues: {'pretoken': [asyncio.Queue]} = {}
 
 observers: {'attempt': [asyncio.Queue]} = {}
 
+
+class PleaseLogin(Exception):
+    """raised when a request requires a user to be logged in"""
+    pass
+
+
+async def uid_from_request():
+    f = await quart.request.form
+    if not (j := f.get('jwt')):
+        raise LookupError('no jwt given')
+    r = db.query('select uid from tokens where jwt=?', [j])
+    if not r: raise LookupError('unrecognized jwt')
+    return r[0]['authid']
+
+
+def require_uid(f0):
+    """supplies the uid from the request, or raises PleaseLogin"""
+    async def f(*a, **kw):
+        # uid can come from cookie or jwt
+        skey = quart.request.cookies.get('sess', '')
+        if skey:
+            uid = sessions.get(skey, {}).get('uid')
+        else:
+            json = await quart.request.json
+            if not (jwt := json.get('jwt')):
+                raise LookupError('no jwt given')
+            r = db.query('select uid from tokens where jwt=?', [jwt])
+            if not r: raise LookupError('unrecognized jwt')
+            uid = r[0]['uid']
+        if not uid:
+            raise PleaseLogin()
+        return await f0(uid=uid, *a, **kw)
+    f.__name__ = f0.__name__
+    return f
+
+
+@app.errorhandler(PleaseLogin)
+async def handle_please_login(_e):
+    html = await quart.render_template('please_login.html')
+    return html   # , 401 htmx doesn't deal well with the 401
+
+
 sessions: {'key': {'uid': int}} = {}
 
 
@@ -96,18 +138,19 @@ async def about():
     return await quart.render_template('about.html')
 
 
-def INSECURE_DEFAULT_USER():  # TODO: fix
-    return dict(authid='ZleGnZck6iNDHe704DK4GHGz9qI2', username='tangentstorm')
-
-
 @platonic('/me', 'me.html')
-async def me():
-    data = INSECURE_DEFAULT_USER()
+@require_uid
+async def me(uid):
+    data = db.query("""
+        select u.username
+        from users u
+        where u.id=?
+        """, [uid])[0]
     data['attempts'] = db.query("""
-        select c.name as c_name, c.title, a.code
+        select a.ts, c.name as c_name, c.title, a.code
         from attempts a, challenges c, users u
-        where a.chid=c.id and u.authid=? and a.uid=u.id
-        """, [data['authid']])
+        where a.chid=c.id and u.id=? and a.uid=u.id
+        """, [uid])
     return data
 
 
@@ -131,19 +174,9 @@ async def show_challenge(name):
     return data[0]
 
 
-async def uid_from_request():
-    f = await quart.request.form
-    if not (j := f.get('jwt')):
-        raise LookupError('no jwt given')
-    r = db.query('select uid from tokens where jwt=?', [j])
-    if not r: raise LookupError('unrecognized jwt')
-    return r[0]['authid']
-
-
 @app.route('/c/<name>/attempt', methods=['POST'])
-async def attempt_challenge(name):
-    if not (uid := (await uid_from_request())):
-        return "log in first.", 403   # TODO: pretty 403 error
+@require_uid
+async def attempt_challenge(name, uid):
     try:
         [row] = db.query('select id from challenges where name=?', [name])
         chid = row['id']
@@ -157,12 +190,13 @@ async def attempt_challenge(name):
 
 
 @platonic('/a/<code>', 'attempt.html')
-async def show_attempt(code):
+@require_uid
+async def show_attempt(code, uid):
     data = db.query("""
         select a.code, a.state, t.name as focus, c.name as c_name, u.username as u_name
         from challenges c, users u, attempts a left join tests t on a.focus = t.id
-        where a.code = (:code)
-        """, {'code': code})[0]
+        where a.code = (:code) and u.id = (:uid)
+        """, {'code': code, 'uid': uid})[0]
     data['state'] = m.AttemptState[data['state'].capitalize()]
     data['progress'] = db.query("""
         select t.name as t_name, p.ts from attempts a, tests t, progress p
@@ -172,6 +206,7 @@ async def show_attempt(code):
 
 
 @app.websocket('/a/<code>/live')
+# TODO: @require_uid (raises RuntimeError: Not within a request context)
 async def attempt_live(code):
     ws = quart.websocket
     q = asyncio.Queue()
@@ -195,25 +230,27 @@ async def attempt_tmp(code):
 
 
 @platonic('/a/<code>/t/<name>', 'test.html')
+@require_uid
 async def show_test(**kw):
     data = db.query("""
         select t.name, t.head, t.body, t.ilines,
            t.olines
         from attempts a, tests t        
-        where a.chid = t.chid
+        where a.chid = t.chid and a.uid = (:uid)
           and a.code = (:code) and t.name=(:name)
         """, kw)[0]
     return data
 
 
 @app.route('/a/<code>/next', methods=['POST'])
-async def next_tests_for_attempt(code):
+@require_uid
+async def next_tests_for_attempt(code, uid):
     # TODO: make sure you're only looking at attempts you're allowed to see
     # otherwise you could spam server with invalid codes for centuries
     # until a code worked, and then see the ultra-secret next test case. :)
     print('attempt code:', code)
     import json
-    rows = db.get_next_tests(code)
+    rows = db.get_next_tests(code, uid)
     # hide the answers for now:
     for row in rows:
         row['olines'] = None
@@ -222,10 +259,11 @@ async def next_tests_for_attempt(code):
 
 
 @app.route('/a/<code>/pass', methods=['POST'])
-async def send_attempt_pass(code):
+@require_uid
+async def send_attempt_pass(code, uid):
     # TODO: validate the jwt
     # TODO: validate the attempt belongs to the user
-    state, focus = db.set_attempt_state(code, m.Transition.Pass)
+    state, focus = db.set_attempt_state(uid, code, m.Transition.Pass)
     assert focus is None, "all tests passed so focus should be None"
     await notify_state(code, state, focus='')
     await notify(code, await quart.render_template('pass.html'))
@@ -233,20 +271,20 @@ async def send_attempt_pass(code):
 
 
 @app.route('/a/<code>/fail', methods=['POST'])
-async def send_attempt_fail(code):
+@require_uid
+async def send_attempt_fail(code, uid):
     # TODO: validate the jwt
-    # TODO: validate the attempt belongs to the user
     jsn = await quart.request.json
     tr_data = jsn.get('result')
     tr = m.TestResult.from_data(tr_data)
     try:
         tn = jsn['test_name']
-        t = db.get_attempt_test(code, tn)
+        t = db.get_attempt_test(uid, code, tn)
     except KeyError:
-        return f'unknown test: {tn}', 400
+        return f'unknown test', 400
     except LookupError:
         return "unknown test or attempt", 400
-    state, focus = db.set_attempt_state(code, m.Transition.Fail, failing_test=tn)
+    state, focus = db.set_attempt_state(uid, code, m.Transition.Fail, failing_test=tn)
     await notify_state(code, state, focus)
     html = await quart.render_template('result.html', test=t, result=tr)
     await notify(code, html)
@@ -254,7 +292,8 @@ async def send_attempt_fail(code):
 
 
 @app.route('/a/<code>/check/<test_name>', methods=['POST'])
-async def check_test_for_attempt(code, test_name):
+@require_uid
+async def check_test_for_attempt(code, test_name, uid):
     actual = (await quart.request.json).get('actual')
     if actual is None:
         return "bad request: no 'actual' field in post", 400
@@ -262,7 +301,7 @@ async def check_test_for_attempt(code, test_name):
     # fetch the expected output
     # TODO: update to allow arbitrary validation rules
     try:
-        t = db.get_attempt_test(code, test_name)
+        t = db.get_attempt_test(uid, code, test_name)
     except LookupError:
         return "unknown test or attempt", 404
 
@@ -302,7 +341,7 @@ async def post_login_success():
     while key in sessions:
         key = random_string()
     sessions[key] = {'uid': uid}
-    whence = frm.get('whence', '/')
+    whence = frm.get('whence') or '/'  # could be there but blank
     res = quart.redirect(whence)
     res.set_cookie('sess', key)
     return res

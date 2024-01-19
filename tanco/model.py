@@ -65,7 +65,6 @@ class LineDiffFailure(TestFailure):
                 + self.diff)
 
 
-
 @dataclass
 class TestResult:
     kind: ResultKind
@@ -116,7 +115,7 @@ class TestDescription:
     olines: [str] = field(default_factory=list)
 
     @property
-    def rule(self) -> ValidationRule:
+    def rule(self) -> ValidationRule | None:
         if self.olines is None:
             return None
         else:
@@ -148,6 +147,7 @@ DEFAULT_TARGET = './my-program'
 
 @dataclass
 class Config:
+    uid: int = 0
     program_args: [str] = field(default_factory=lambda: [DEFAULT_TARGET])
     use_shell: bool = False
     # where to write the input to the child program

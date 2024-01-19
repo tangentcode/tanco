@@ -41,6 +41,7 @@ first feature.
 
 def load_config() -> Config:
     res = Config()
+    res.uid = TancoClient().whoami()['id']
     res.input_path = os.environ.get("INPUT_PATH", "")
     res.skip_lines = int(os.environ.get("SKIP_LINES", "0"))
     res.test_plan = os.environ.get("TEST_PLAN")
@@ -270,7 +271,7 @@ def main(argv: [str]):
         run_tests(cfg)
     except SystemExit:
         pass
-    except NoTestPlanError as e:
+    except NoTestPlanError:
         fail(cfg, ['No challenge selected.'
                    'Use `tanco init` or set TEST_PLAN environment variable.'])
     except EnvironmentError as e:

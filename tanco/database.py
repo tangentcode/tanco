@@ -70,18 +70,18 @@ def get_server_id(url):
     return rows[0]['id']
 
 
-def get_next_tests(aid: str):
+def get_next_tests(aid: str, uid: int = None):
     """get the next group of tests for a given attempt"""
     return query("""
         select t.* from (
             select t.chid, t.grp
             from (attempts a left join tests t on a.chid=t.chid)
                 left join progress p on t.id=p.tid
-            where a.code=(:code)
+            where a.code=(:code) and a.uid = (:uid)
             group by t.grp having count(p.id)=0
             order by t.grp limit 1) as g
         left join tests t on g.chid=t.chid and g.grp=t.grp
-        """, {'code': aid})
+        """, {'code': aid, 'uid': uid})
 
 
 def save_progress(attempt: str, test: str, _passed: bool):
@@ -101,7 +101,7 @@ def save_rule(attempt: str, test: str, rule: dict):
     # json.dumps(rule)
 
     # for now, we still have this 'olines' thing
-    assert rule['kind'] == 'lines',\
+    assert rule['kind'] == 'lines', \
         f"don't know how to save {rule['kind']!r} rules"
     commit("""
         update tests set olines = ?
@@ -112,21 +112,20 @@ def save_rule(attempt: str, test: str, rule: dict):
         """, ['\n'.join(rule['data']), test, attempt])
 
 
-def get_attempt_test(code, test_name, uid=None):
-    # TODO: validate current user owns the attempt
+def get_attempt_test(uid, code, test_name):
     rows = query(
         """
         select t.name, t.head, t.body, t.ilines, t.olines
         from attempts a left join tests t on a.chid=t.chid
-        where a.code=? and t.name=?
-        """, [code, test_name])
+        where a.code=? and a.uid=? and t.name=?
+        """, [code, uid, test_name])
     # the actual output from the test run is the request body (json)
     if not rows:
         raise LookupError(f'attempt: {code}, test: {test_name}')
     return test_from_row(rows[0])
 
 
-def set_attempt_state(code, transition: m.Transition, failing_test: str = '') -> (m.AttemptState, str):
+def set_attempt_state(uid, code, transition: m.Transition, failing_test: str = '') -> (m.AttemptState, str):
     """set the state of an attempt according to transition table"""
     try:
         old = query("""
@@ -188,7 +187,7 @@ def set_attempt_state(code, transition: m.Transition, failing_test: str = '') ->
     if not n:
         raise ValueError(f"invalid transition: {o}.{t}")
     elif t == '?':  # c.X ('tanco next' from 'change' state)
-        next_tests = get_next_tests(code)
+        next_tests = get_next_tests(code, uid)
         if next_tests:
             n = 'b'
             new_focus = next_tests[0]['id']

@@ -2,7 +2,7 @@
 """
 command-line driver for tanco client.
 """
-import os, sys, cmd as cmdlib, json, jwt as jwtlib
+import os, sys, cmd as cmdlib, jwt as jwtlib
 import sqlite3
 import webbrowser
 
@@ -151,7 +151,7 @@ class TancoDriver(cmdlib.Cmd):
     def do_show(self, arg=None):
         """show the current test prompt"""
         cfg = runner.load_config()
-        tests = db.get_next_tests(cfg.attempt)
+        tests = db.get_next_tests(cfg.attempt, cfg.uid)
         self.result = (cfg.attempt, tests)
         if tests:
             if arg == '-n':
@@ -212,7 +212,8 @@ class TancoDriver(cmdlib.Cmd):
         """Exit the shell"""
         return True
 
-    def do_EOF(self, _arg):
+    @staticmethod
+    def do_EOF(_arg):
         """Exit when ^D pressed or EOF reached"""
         return True
 

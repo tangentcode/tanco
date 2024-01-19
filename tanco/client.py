@@ -34,8 +34,8 @@ class TancoClient:
         who = self.whoami()
         if not who:
             raise LookupError('You must be logged in to attempt a challenge.')
-        res = requests.post(self.url + 'c/' + challenge_name + '/attempt', {
-            'jwt': who['jwt']})
+        res = requests.post(self.url + 'c/' + challenge_name + '/attempt',
+                            json={'jwt': who['jwt']})
         return res.json()['aid']
 
     def whoami(self):
