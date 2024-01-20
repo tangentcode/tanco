@@ -39,7 +39,7 @@ def get_session(skey: str) -> dict | None:
 
 
 def new_session(sid: int, uid: int) -> str:
-    skey = m.random_string()
+    skey = random_string()
     db.commit("""
         insert into sessions (skey, sid, uid, data) values (?, ?, ?, ?)
         """, [skey, sid, uid, '{"uid": %i}' % uid])
@@ -196,7 +196,7 @@ async def attempt_challenge(name, uid):
         chid = row['id']
     except ValueError:
         raise LookupError(f'invalid challenge: {name!r}')
-    code = m.random_string()
+    code = random_string()
     db.commit("""
         insert into attempts (uid, chid, code) values (?, ?, ?)
         """, [uid, chid, code])
@@ -253,7 +253,6 @@ async def show_test(**kw):
 @app.route('/a/<code>/next', methods=['POST'])
 @require_uid
 async def next_tests_for_attempt(code, uid):
-    import json
     rows = db.get_next_tests(code, uid)
     # hide the answers for now:
     for row in rows:
@@ -364,7 +363,7 @@ def get_auth_pre():
 
 @app.route('/auth/pre', methods=['POST'])
 def post_auth_pre():
-    pre = m.random_string()
+    pre = random_string()
     queues[pre] = asyncio.Queue()
     return {'token': pre}
 
