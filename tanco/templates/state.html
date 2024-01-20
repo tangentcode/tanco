@@ -1,1 +1,25 @@
-<h2 id="attempt-state">state: {{ data.state.name.lower() }} {{ data.focus or '' }}</h2>
+<h2 id="attempt-state">
+  state: {{ data.state.name.lower() }}{% if data.focus %}
+  <a hx-target="#test-detail"
+     href="/a/{{ data.code }}/t/{{ data.focus }}">{{ data.focus }}</a>
+{% endif %}
+   <span class="has-tooltip">
+     (?)
+     <div class="tooltip">
+       The state tells you what to do next:
+       <dl>
+         <dt>start</dt>
+         <dd>Run <code>tanco next</code></dd>
+         <dt>fix [test name]</dt>
+         <dd>Regression. Fix the test and run <code>tanco test</code></dd>
+         <dt>build [test name]</dt>
+         <dd>New feature. Build the feature and run <code>tanco test</code>.</dd>
+         <dt>change</dt>
+         <dd>All tests have passed. Either make improvements and run <code>tanco test</code>.
+         Or run <code>tanco next</code> to return to proceed.</dd>
+         <dt>done</dt>
+         <dd>Nothing more to do. You've completed the challenge!</dd>
+       </dl>
+     </div>
+   </span>
+</h2>

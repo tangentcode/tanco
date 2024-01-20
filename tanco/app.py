@@ -89,7 +89,7 @@ async def notify(code, data, wrap=True):
 
 
 async def notify_state(code, state, focus):
-    data = dict(state=state, focus=focus)
+    data = dict(state=state, focus=focus, code=code)
     html = await quart.render_template('state.html', data=data)
     await notify(code, html, wrap=False)
 
