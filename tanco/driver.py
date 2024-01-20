@@ -235,6 +235,7 @@ def show_help():
 
 
 def main():
+    db.ensure_sdb()
     d = TancoDriver()
     if "-q" in sys.argv:
         sys.argv.remove('-q')

@@ -1,10 +1,23 @@
 import sqlite3
 from . import model as m
+import os
 
-SDB_PATH = 'tanco.sdb'  # TODO: make this configurable
+SDB_PATH = os.environ.get('TANCO_SDB_PATH')
+if not SDB_PATH:
+    SDB_PATH = os.path.expanduser('~/.tanco.sdb')
 
 
-def query(sql, *a, **kw):
+def ensure_sdb():
+    if not os.path.exists(SDB_PATH):
+        print("Creating database at", SDB_PATH)
+        import tanco
+        sql = open(os.path.join(*tanco.__path__ + ['sql', 'init.sql'])).read()
+        dbc = begin()
+        dbc.executescript(sql)
+        dbc.commit()
+
+
+def query(sql, *a, **kw) -> [{}]:
     """fetch a relation from the database"""
     dbc = sqlite3.connect(SDB_PATH)
     cur = dbc.execute(sql, *a, **kw)
@@ -13,7 +26,7 @@ def query(sql, *a, **kw):
             for vals in cur.fetchall()]
 
 
-def commit(sql, *a, **kw):
+def commit(sql, *a, **kw) -> int | None:
     """commit a transaction to the database"""
     dbc = begin()
     cur = dbc.execute(sql, *a, **kw)
@@ -21,14 +34,14 @@ def commit(sql, *a, **kw):
     return cur.lastrowid
 
 
-def begin():
+def begin() -> sqlite3.Connection:
     """return a connection so you can begin a transaction"""
     tx = sqlite3.connect(SDB_PATH)
     tx.execute('PRAGMA foreign_keys = ON')
     return tx
 
 
-def chomp(lines):
+def chomp(lines: [str]) -> [str]:
     """remove trailing blank line"""
     if not lines: return []
     return lines[:-1] if lines[-1] == '' else lines

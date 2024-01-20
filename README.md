@@ -19,24 +19,6 @@ cd tanco
 pip install -e .
 ```
 
-## setting up the database
-
-Currently expects `tanco.sdb` in the current directory.
-
-You need one copy for the server, and one copy for each challenge attempt.
-(So these should run in separate directories.)
-
-(Eventually on the client side, there will only be one global database
-shared by all attempts on your machine, but because tanco still expects
-the database to be in the current directory, you need multiple copies.)
-
-For now, you have to do this manually, by running the following commands:
-
-```bash
-cd /path/to/tanco-repo
-echo '.read tanco/sql/init.sql' | sqlite3 tanco.sdb 
-```
-
 
 ## Using the Client
 
@@ -49,9 +31,24 @@ git commit    # once the test passes
 tanco next     # to fetch the next test
 ```
 
+## inspecting the database
+
+Tanco (both the client and server) creates a sqlite database in `~/.tanco.sdb`.
+
+You can override this location by setting the `TANCO_SDB` environment
+variable to a different path.
+
+You can inspect the database with the `sqlite3` command-line tool.
+
+```bash
+sqlite3 ~/.tanco.sdb
+.schema
+```
+
+
 ## Running the Server
 
-First set up a private key, then run quart.
+First set up a private key, then run quart or hypercorn.
 
 ### Private Key
 
@@ -71,14 +68,16 @@ ssh-keygen -t rsa -b 4096 -m PEM -f tanco_auth_key.pem
 This will also create a public key in `tanco_auth_key.pem.pub`.
 This is not currently used for anything.
 
-### Quart server
+### Running the server
+
+You can run the development server like so:
 
 ``bash
 QUART_APP=tanco.app:app quart run # --reload
 ``
 
-Note that the above runs the standard asgiref server, and as the message will say:
+Or (on platforms that support it) use hypercorn:
 
-```
-Please use an ASGI server (e.g. Hypercorn) directly in production 
+```bash
+hypercorn tanco.app:app # --reload 
 ```
