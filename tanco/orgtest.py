@@ -98,7 +98,7 @@ class TestReaderStateMachine:
             .format(self.next_name, self.lineno))
         self.test_names.append(self.next_name)
 
-    def on_begin_test(self, line):
+    def on_begin_test(self, _line):
         assert self.next_name != self.prev_name, (
             "missing or duplicate name for test on line {0}"
             .format(self.lineno))
