@@ -188,11 +188,15 @@ class TancoDriver(cmdlib.Cmd):
     def do_status(_arg):
         """print information about the current attempt"""
         cfg = runner.load_config()
+        if not cfg.attempt:
+            print("No attempt in progress.")
+            print("Use `tanco init` to start a new attempt.")
+            return
         try:
             s = db.current_status(cfg.attempt)
             print("server:", s['server'])
-            print("challenge:", s['challenge'])
             print("attempt:", cfg.attempt)
+            print("challenge:", s['challenge'])
             print(f"state: {s['state']} {s['focus'] or ''}")
         except LookupError as e:
             print("attempt: ", cfg.attempt)
