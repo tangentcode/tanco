@@ -234,3 +234,18 @@ def uid_from_tokendata(sid, authid, username):
           values (?, ?, ?)
           """, [sid, authid, username])
     return uid
+
+
+def current_state(attempt):
+    return query('select state from attempts where code=?',
+                 [attempt])[0]['state']
+
+
+def current_status(attempt):
+    try:
+        return query('''
+            select s.url as server, c.name as challenge, a.state, t.name as focus
+            from challenges c, servers s, attempts a left join tests t on a.focus = t.id
+            where a.chid = c.id and c.sid = s.id and a.code=?''', [attempt])[0]
+    except IndexError:
+        raise LookupError(f'attempt: {attempt}')

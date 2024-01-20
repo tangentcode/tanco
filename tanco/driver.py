@@ -171,6 +171,21 @@ class TancoDriver(cmdlib.Cmd):
             print("Use `tanco test` to check that they still pass.")
             print("Use `tanco next` to fetch the next test.")
 
+    @staticmethod
+    def do_status(_arg):
+        """print information about the current attempt"""
+        cfg = runner.load_config()
+        try:
+            s = db.current_status(cfg.attempt)
+            print("server:", s['server'])
+            print("challenge:", s['challenge'])
+            print("attempt:", cfg.attempt)
+            print(f"state: {s['state']} {s['focus'] or ''}")
+        except LookupError as e:
+            print("attempt: ", cfg.attempt)
+            print("attempt (or corresponding challenge) not found in database.")
+            print("consider running `tanco recover`")
+
     def do_next(self, _arg):
         """Fetch the next test from the server."""
         # TODO:  double check that all tests pass and repo is clean
