@@ -1,11 +1,17 @@
 import difflib
 import json
+import string
+import random
 from dataclasses import dataclass, field
 from enum import Enum
 
 ResultKind = Enum('ResultKind', 'Pass Fail AskServer')
 Transition = Enum('Transition', 'Pass Next Fail')
 AttemptState = Enum('AttemptState', 'Start Build Fix Change Done')
+
+
+def random_string(length=32):
+    return ''.join(random.choice(string.ascii_letters) for _ in range(length))
 
 
 class ValidationRule:

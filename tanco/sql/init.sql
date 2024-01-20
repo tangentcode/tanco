@@ -28,6 +28,16 @@ create table users (
     unique (sid, authid));
 
 
+create table sessions (
+    id integer primary key,
+    ts datetime not null default current_timestamp,
+    skey text not null unique,
+    uid integer not null references users,
+    sid integer not null references servers,
+    seen datetime not null default current_timestamp,
+    data text);
+
+
 create table tokens (
     id integer primary key,
     ts datetime not null default current_timestamp,

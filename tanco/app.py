@@ -1,7 +1,6 @@
-import random
-import string
 import asyncio
 import inspect
+import json
 
 import quart
 import jwt as jwtlib
@@ -13,6 +12,8 @@ app = quart.Quart(__name__)
 # TODO: make this dev-server only
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 
+THIS_SID = 1  # TODO: validate server id
+
 ok = None
 
 # this maps pre-tokens to async queues that
@@ -20,6 +21,21 @@ ok = None
 queues: {'pretoken': [asyncio.Queue]} = {}
 
 observers: {'attempt': [asyncio.Queue]} = {}
+
+# == sessions =================================================
+
+
+def get_session(skey: str) -> dict | None:
+    rows = db.query("select * from sessions where skey=?", [skey])
+    return json.loads(rows[0]['data']) if rows else None
+
+
+def new_session(sid: int, uid: int) -> str:
+    skey = m.random_string()
+    db.commit("""
+        insert into sessions (skey, sid, uid, data) values (?, ?, ?, ?)
+        """, [skey, sid, uid, '{"uid": %i}' % uid])
+    return skey
 
 
 class PleaseLogin(Exception):
@@ -42,7 +58,7 @@ def require_uid(f0):
         # uid can come from cookie or jwt
         skey = quart.request.cookies.get('sess', '')
         if skey:
-            uid = sessions.get(skey, {}).get('uid')
+            uid = (get_session(skey) or {}).get('uid')
         else:
             json = await quart.request.json
             if not (jwt := json.get('jwt')):
@@ -63,8 +79,7 @@ async def handle_please_login(_e):
     return html   # , 401 htmx doesn't deal well with the 401
 
 
-sessions: {'key': {'uid': int}} = {}
-
+# == websocket notifications ==================================
 
 async def notify(code, data, wrap=True):
     data = f'<span id="test-detail">{data}</span>' if wrap else data
@@ -81,7 +96,7 @@ async def notify_state(code, state, focus):
 JWT_OBJ = jwtlib.JWT()
 JWT_KEY = jwtlib.jwk_from_pem(open('tanco_auth_key.pem', 'rb').read())
 
-# -------------------------------------------------------------
+# == platonic apps ============================================
 # mini web framework to wrap htmx fragments in a layout
 # and also allow fetching raw json with .json suffix
 
@@ -182,7 +197,7 @@ async def attempt_challenge(name, uid):
         chid = row['id']
     except ValueError:
         raise LookupError(f'invalid challenge: {name!r}')
-    code = random_string()
+    code = m.random_string()
     db.commit("""
         insert into attempts (uid, chid, code) values (?, ?, ?)
         """, [uid, chid, code])
@@ -315,7 +330,7 @@ async def check_test_for_attempt(code, test_name, uid):
 @app.route('/whoami', methods=['GET'])
 async def get_whoami():
     skey = quart.request.cookies.get('sess', '')
-    uid = sessions.get(skey, {}).get('uid')
+    uid = (get_session(skey) or {}).get('uid') if skey else None
     data = db.query('select username from users where id=?', [uid])[0] if uid else {}
     return await quart.render_template('whoami.html', uid=uid, data=data)
 
@@ -328,11 +343,8 @@ async def get_login():
 @app.route('/login/success', methods=['POST'])
 async def post_login_success():
     frm = await quart.request.form
-    uid, data = decode_access_token(frm.get('accessToken'))
-    key = random_string()
-    while key in sessions:
-        key = random_string()
-    sessions[key] = {'uid': uid}
+    uid, _ = decode_access_token(frm.get('accessToken'))
+    key = new_session(THIS_SID, uid)
     whence = frm.get('whence') or '/'  # could be there but blank
     res = quart.redirect(whence)
     res.set_cookie('sess', key)
@@ -356,14 +368,9 @@ def get_auth_pre():
     """
 
 
-def random_string(length=32):
-    res = ''.join(random.choice(string.ascii_letters) for _ in range(length))
-    return random_string() if res in queues else res
-
-
 @app.route('/auth/pre', methods=['POST'])
 def post_auth_pre():
-    pre = random_string()
+    pre = m.random_string()
     queues[pre] = asyncio.Queue()
     return {'token': pre}
 
@@ -396,11 +403,10 @@ def decode_access_token(acc0):
     # (otherwise attacker could just send any token)
     acc = JWT_OBJ.decode(acc0, do_verify=False)
     # TODO: move this to a real signup process
-    sid = 1  # TODO: validate server
     # TODO: use real usernames
     authid = acc['sub']
     username = acc['email']
-    uid = db.uid_from_tokendata(sid, authid, username)
+    uid = db.uid_from_tokendata(THIS_SID, authid, username)
     token_data = {'authid': authid, 'username': username}
     return uid, token_data
 
