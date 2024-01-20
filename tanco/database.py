@@ -158,7 +158,7 @@ def set_attempt_state(uid, code, transition: m.Transition, failing_test: str = '
     # 'XPNO' X:tanco-next P=test pass, N=new fail, O=old fail
     match transition:
         case m.Transition.Pass: t = 'P'
-        case m.Transition.Next: t = 'N'  # !! what about `tanco next` but no more tests?
+        case m.Transition.Next: t = 'X'  # !! what about `tanco next` but no more tests?
         case m.Transition.Fail:
             assert failing_test, "failing test required for Fail transition"
             row = query("""
@@ -168,11 +168,11 @@ def set_attempt_state(uid, code, transition: m.Transition, failing_test: str = '
                   and a.id = p.aid and t.name = (:test)
                 group by t.id""", {'aid': old['aid'], 'test': failing_test})[0]
             new_focus, is_regression = row['id'], row['is_regression']
-            t = 'O' if is_regression else 'F'
+            t = 'O' if is_regression else 'N'
         case _: raise ValueError(f"unknown transition: {transition}")
 
     # state machine transition table:
-    sm = {'s': {'X': 'b'},
+    sm = {'s': {'X': 'b', 'P': 's'},  # they might do "tanco test" from start
           'b': {'P': 'c', 'N': 'b', 'O': 'f'},
           'f': {'O': 'f', 'N': 'b', 'P': 'c'},
           'c': {'X': '?', 'O': 'f', 'P': 'c'},

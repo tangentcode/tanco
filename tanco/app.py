@@ -60,6 +60,8 @@ def require_uid(f0):
             uid = (get_session(skey) or {}).get('uid')
         else:
             jsn = await quart.request.json
+            if not jsn:
+                raise PleaseLogin()
             if not (jwt := jsn.get('jwt')):
                 raise LookupError('no jwt given')
             r = db.query('select uid from tokens where jwt=?', [jwt])
@@ -253,6 +255,7 @@ async def show_test(**kw):
 @app.route('/a/<code>/next', methods=['POST'])
 @require_uid
 async def next_tests_for_attempt(code, uid):
+    db.set_attempt_state(uid, code, m.Transition.Next)
     rows = db.get_next_tests(code, uid)
     # hide the answers for now:
     for row in rows:
@@ -264,7 +267,7 @@ async def next_tests_for_attempt(code, uid):
 @require_uid
 async def send_attempt_pass(code, uid):
     state, focus = db.set_attempt_state(uid, code, m.Transition.Pass)
-    assert focus is None, "all tests passed so focus should be None"
+    assert not focus, "all tests passed so focus should be empty"
     await notify_state(code, state, focus='')
     await notify(code, await quart.render_template('pass.html'))
     return ['ok']

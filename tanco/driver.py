@@ -6,7 +6,7 @@ import os, sys, cmd as cmdlib, jwt as jwtlib
 import sqlite3
 import webbrowser
 
-from . import runner, orgtest, database as db
+from . import runner, orgtest, database as db, model as m
 from .client import TancoClient
 from .model import Config, TestDescription
 
@@ -105,14 +105,20 @@ class TancoDriver(cmdlib.Cmd):
 
     def do_init(self, arg):
         """Create .tanco file in current directory"""
-        if os.path.exists('.tanco'):
-            print("Already initialized.")
-            return
         if not (who := self.client.whoami()):
             print("Please login first.")
             return
 
-        # either way, the following sets self.result to challenge list
+        if os.path.exists('.tanco'):
+            cfg = runner.load_config()
+            if cfg.attempt:
+                print("Already initialized.")
+                print("Remove the 'attempt' field from .tanco if you")
+                print("really want to run `tanco init` again.")
+                return
+        else:
+            cfg = Config()
+
         if arg:
             self.result = self.client.list_challenges()
         else:
@@ -126,18 +132,19 @@ class TancoDriver(cmdlib.Cmd):
             return
         c = match[0]
         sid = db.get_server_id(self.client.url)
-        chid = db.commit("""insert or replace into challenges
+        db.commit("""insert or ignore into challenges
             (sid, name, title) values (?, ?, ?)
             """, [sid, c['name'], c['title']])
+        chid = db.query('select id from challenges where name=?', [c['name']])[0]['id']
         # now we have arg = a valid challenge name on the server,
         # so we have to initialize the attempt on both the remote
         # and local databases.
-        aid = self.client.attempt(arg)
+        code = self.client.attempt(arg)
         uid = who['id']
         db.commit("""
             insert into attempts (uid, chid, code) values (?, ?, ?)
-            """, [uid, chid, aid])
-        cfg = Config(attempt=aid)
+            """, [uid, chid, code])
+        cfg.attempt = code
         with open('.tanco', 'w') as f:
             f.write(cfg.to_json())
         print('Project initialized.')
@@ -152,6 +159,12 @@ class TancoDriver(cmdlib.Cmd):
     def do_show(self, arg=None):
         """Show a description of the current test."""
         cfg = runner.load_config()
+        state = db.current_state(cfg.attempt)
+        if state == 'start':
+            print("You have not started the challenge yet.")
+            print("Use `tanco check` to make sure your program runs.")
+            print("Use `tanco next` to fetch the first test.")
+            return
         tests = db.get_next_tests(cfg.attempt, cfg.uid)
         self.result = (cfg.attempt, tests)
         if tests:
@@ -190,19 +203,28 @@ class TancoDriver(cmdlib.Cmd):
         """Fetch the next test from the server."""
         # TODO:  double check that all tests pass and repo is clean
 
-        self.do_show('-n')
-        (attempt, known_tests) = self.result
-        if known_tests:
+        cfg = runner.load_config()
+        state = db.current_state(cfg.attempt)
+        if state == 'done':
+            print("You have already completed the challenge!")
             return
+        elif state != 'start':
+            # use `tanco show` to see if we already have the next test:
+            self.do_show('-n')
+            (attempt, known_tests) = self.result
+            if known_tests:
+                return
 
         # -- fetch the next test from the server
-        tests = self.client.get_next(attempt)
+        tests = self.client.get_next(cfg.attempt)
         if not tests:
             print("You have completed the challenge!")
+            db.set_attempt_state(cfg.uid, cfg.attempt, m.Transition.Done)
             # TODO: do something when you win
             return
         try:
-            chid = db.challenge_from_attempt(attempt).id
+            chid = db.challenge_from_attempt(cfg.attempt).id
+            db.set_attempt_state(cfg.uid, cfg.attempt, m.Transition.Next)
             tx = db.begin()
             for t in tests:
                 tx.execute("""
