@@ -104,7 +104,7 @@ class TancoDriver(cmdlib.Cmd):
     # -- local project config ---------------------------------
 
     def do_init(self, arg):
-        """create .tanco file in current directory"""
+        """Create .tanco file in current directory"""
         if os.path.exists('.tanco'):
             print("Already initialized.")
             return
@@ -146,10 +146,11 @@ class TancoDriver(cmdlib.Cmd):
 
     @staticmethod
     def do_check(arg):
+        """Check that the target program runs."""
         runner.check(['tanco']+[x for x in arg.split(' ') if x != ''])
 
     def do_show(self, arg=None):
-        """show the current test prompt"""
+        """Show a description of the current test."""
         cfg = runner.load_config()
         tests = db.get_next_tests(cfg.attempt, cfg.uid)
         self.result = (cfg.attempt, tests)
@@ -171,7 +172,7 @@ class TancoDriver(cmdlib.Cmd):
             print("Use `tanco next` to fetch the next test.")
 
     def do_next(self, _arg):
-        """fetch the next test"""
+        """Fetch the next test from the server."""
         # TODO:  double check that all tests pass and repo is clean
 
         self.do_show('-n')
@@ -204,12 +205,12 @@ class TancoDriver(cmdlib.Cmd):
 
     @staticmethod
     def do_test(arg):
-        """Run the tests"""
+        """Run the tests."""
         runner.main(['tanco']+[x for x in arg.split(' ') if x != ''])
 
     @staticmethod
     def do_q(_arg):
-        """Exit the shell"""
+        """Exit the shell."""
         return True
 
     @staticmethod
