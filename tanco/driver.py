@@ -5,6 +5,7 @@ command-line driver for tanco client.
 import os, sys, cmd as cmdlib, jwt as jwtlib
 import sqlite3
 import webbrowser
+import subprocess
 
 from . import runner, orgtest, database as db, model as m
 from .client import TancoClient
@@ -183,6 +184,11 @@ class TancoDriver(cmdlib.Cmd):
             print("All known tests have passed.")
             print("Use `tanco test` to check that they still pass.")
             print("Use `tanco next` to fetch the next test.")
+
+    @staticmethod
+    def do_version(_arg):
+        """Print tanco version (by calling `pip show tanco`) """
+        subprocess.run(["pip", "show", "tanco"])
 
     @staticmethod
     def do_status(_arg):
