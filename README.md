@@ -7,6 +7,11 @@ This is a work in progress. There are videos about it on:
 
 https://www.youtube.com/@tangentstream
 
+If your goal is to work through a coding challenge,
+detailed setup instructions are here:
+
+https://tangentcode.com/setup
+
 ## Installation
 
 ```bash
