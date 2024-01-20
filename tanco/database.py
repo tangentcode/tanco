@@ -197,9 +197,10 @@ def set_attempt_state(uid, code, transition: m.Transition, failing_test: str = '
 
     # n: one-letter code for new state (same as codes for o)
     n = sm[o].get(t)
+    print(f"transition: {o}.{t} -> ", n)
     if not n:
         raise ValueError(f"invalid transition: {o}.{t}")
-    elif t == '?':  # c.X ('tanco next' from 'change' state)
+    elif n == '?':  # c.X ('tanco next' from 'change' state)
         next_tests = get_next_tests(code, uid)
         if next_tests:
             n = 'b'
