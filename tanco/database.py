@@ -83,7 +83,7 @@ def get_server_id(url):
     return rows[0]['id']
 
 
-def get_next_tests(aid: str, uid: int = None):
+def get_next_tests(aid: str, uid: int):
     """get the next group of tests for a given attempt"""
     return query("""
         select t.* from (
@@ -144,7 +144,7 @@ def set_attempt_state(uid, code, transition: m.Transition, failing_test: str = '
         old = query("""
             select a.id as aid, a.state, t.name as focus
             from attempts a left join tests t on a.focus = t.id
-            where a.code=?""", [code])[0]
+            where a.code=? and a.uid=?""", [code, uid])[0]
     except IndexError:
         raise LookupError(f'attempt: {code}')
 

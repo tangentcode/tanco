@@ -1,6 +1,8 @@
 import asyncio
 import inspect
 import json
+import string
+import random
 
 import quart
 import jwt as jwtlib
@@ -24,8 +26,12 @@ observers: {'attempt': [asyncio.Queue]} = {}
 
 # == sessions =================================================
 
+def random_string(length=32):
+    return ''.join(random.choice(string.ascii_letters) for _ in range(length))
+
 
 def get_session(skey: str) -> dict | None:
+    # TODO: update the timestamp in the 'seen' column
     rows = db.query("select * from sessions where skey=?", [skey])
     return json.loads(rows[0]['data']) if rows else None
 
@@ -43,15 +49,6 @@ class PleaseLogin(Exception):
     pass
 
 
-async def uid_from_request():
-    f = await quart.request.form
-    if not (j := f.get('jwt')):
-        raise LookupError('no jwt given')
-    r = db.query('select uid from tokens where jwt=?', [j])
-    if not r: raise LookupError('unrecognized jwt')
-    return r[0]['authid']
-
-
 def require_uid(f0):
     """supplies the uid from the request, or raises PleaseLogin"""
     async def f(*a, **kw):
@@ -60,8 +57,8 @@ def require_uid(f0):
         if skey:
             uid = (get_session(skey) or {}).get('uid')
         else:
-            json = await quart.request.json
-            if not (jwt := json.get('jwt')):
+            jsn = await quart.request.json
+            if not (jwt := jsn.get('jwt')):
                 raise LookupError('no jwt given')
             r = db.query('select uid from tokens where jwt=?', [jwt])
             if not r: raise LookupError('unrecognized jwt')
@@ -76,7 +73,7 @@ def require_uid(f0):
 @app.errorhandler(PleaseLogin)
 async def handle_please_login(_e):
     html = await quart.render_template('please_login.html')
-    return html   # , 401 htmx doesn't deal well with the 401
+    return html   # htmx didn't show content when status 401
 
 
 # == websocket notifications ==================================
@@ -207,6 +204,7 @@ async def attempt_challenge(name, uid):
 @platonic('/a/<code>', 'attempt.html')
 @require_uid
 async def show_attempt(code, uid):
+    # TODO: trap IndexError if no attempt found
     data = db.query("""
         select a.code, a.state, t.name as focus, c.name as c_name, u.username as u_name
         from challenges c, users u, attempts a left join tests t on a.focus = t.id
@@ -239,6 +237,7 @@ async def attempt_live(code):
 @platonic('/a/<code>/t/<name>', 'test.html')
 @require_uid
 async def show_test(**kw):
+    # TODO: make sure the user has either passed the test or it is their next test
     data = db.query("""
         select t.name, t.head, t.body, t.ilines,
            t.olines
@@ -252,24 +251,17 @@ async def show_test(**kw):
 @app.route('/a/<code>/next', methods=['POST'])
 @require_uid
 async def next_tests_for_attempt(code, uid):
-    # TODO: make sure you're only looking at attempts you're allowed to see
-    # otherwise you could spam server with invalid codes for centuries
-    # until a code worked, and then see the ultra-secret next test case. :)
-    print('attempt code:', code)
     import json
     rows = db.get_next_tests(code, uid)
     # hide the answers for now:
     for row in rows:
         row['olines'] = None
-    print('next tests:', json.dumps(rows))
     return rows
 
 
 @app.route('/a/<code>/pass', methods=['POST'])
 @require_uid
 async def send_attempt_pass(code, uid):
-    # TODO: validate the jwt
-    # TODO: validate the attempt belongs to the user
     state, focus = db.set_attempt_state(uid, code, m.Transition.Pass)
     assert focus is None, "all tests passed so focus should be None"
     await notify_state(code, state, focus='')
@@ -415,6 +407,7 @@ def decode_access_token(acc0):
 async def post_auth_success():
     frm = await quart.request.form
     uid, data = decode_access_token(frm.get('accessToken'))
+    # TODO: validate the jwt
     jwt = JWT_OBJ.encode(data, JWT_KEY, alg='RS256')
 
     db.commit("insert into tokens (uid, jwt) values (?, ?)",
