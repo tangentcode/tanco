@@ -2,7 +2,7 @@ import requests
 import os
 
 from . import database as db
-from .model import TestResult
+from . import model as m
 
 
 class TancoClient:
@@ -57,13 +57,15 @@ class TancoClient:
         who = self.whoami()
         if not who:
             raise LookupError('You must be logged in to send result.')
+        db.set_attempt_state(who['id'], attempt, m.Transition.Pass)
         return self.post('a/' + attempt + '/pass', {
             'jwt': who['jwt']})
 
-    def send_fail(self, attempt, test_name: str, result: TestResult):
+    def send_fail(self, attempt, test_name: str, result: m.TestResult):
         who = self.whoami()
         if not who:
             raise LookupError('You must be logged in to send result.')
+        db.set_attempt_state(who['id'], attempt, m.Transition.Fail, test_name)
         return self.post('a/' + attempt + '/fail', {
             'jwt': who['jwt'],
             'test_name': test_name,
@@ -76,4 +78,4 @@ class TancoClient:
         res = self.post(f'a/{attempt}/check/{test_name}', {
             'jwt': who['jwt'],
             'actual': actual})
-        return TestResult.from_data(res)
+        return m.TestResult.from_data(res)
