@@ -242,7 +242,7 @@ class TancoDriver(cmdlib.Cmd):
                     """, [chid, t['name'], t['head'], t['body'], t['grp'], t['ord'],
                           t['ilines'], t['olines']])
             tx.commit()
-            # have to do this second or it'll transition to 'done'!!
+            # have to do this second, or it'll transition to 'done'!!
             db.set_attempt_state(cfg.uid, cfg.attempt, m.Transition.Next)
         except sqlite3.IntegrityError as e:
             # this should not actually happen (because the 'show' call worked)
