@@ -1,6 +1,7 @@
-import sqlite3
-from . import model as m
 import os
+import sqlite3
+
+from . import model as m
 
 SDB_PATH = os.environ.get('TANCO_SDB_PATH')
 if not SDB_PATH:
@@ -9,15 +10,15 @@ if not SDB_PATH:
 
 def ensure_sdb():
     if not os.path.exists(SDB_PATH):
-        print("Creating database at", SDB_PATH)
+        print('Creating database at', SDB_PATH)
         import tanco
-        sql = open(os.path.join(*tanco.__path__ + ['sql', 'init.sql'])).read()
+        sql = open(os.path.join(*tanco.__path__, 'sql', 'init.sql')).read()
         dbc = begin()
         dbc.executescript(sql)
         dbc.commit()
 
 
-def query(sql, *a, **kw) -> [{}]:
+def query(sql, *a, **kw) -> list[dict]:
     """fetch a relation from the database"""
     dbc = sqlite3.connect(SDB_PATH)
     cur = dbc.execute(sql, *a, **kw)
@@ -41,7 +42,7 @@ def begin() -> sqlite3.Connection:
     return tx
 
 
-def chomp(lines: [str]) -> [str]:
+def chomp(lines: list[str]) -> list[str]:
     """remove trailing blank line"""
     if not lines: return []
     return lines[:-1] if lines[-1] == '' else lines
@@ -138,7 +139,7 @@ def get_attempt_test(uid, code, test_name):
     return test_from_row(rows[0])
 
 
-def set_attempt_state(uid, code, transition: m.Transition, failing_test: str = '') -> (m.AttemptState, str):
+def set_attempt_state(uid, code, transition: m.Transition, failing_test: str = '') -> tuple[m.AttemptState, str]:
     """set the state of an attempt according to transition table"""
     try:
         old = query("""
@@ -160,7 +161,7 @@ def set_attempt_state(uid, code, transition: m.Transition, failing_test: str = '
         case m.Transition.Pass: t = 'P'
         case m.Transition.Next: t = 'X'  # !! what about `tanco next` but no more tests?
         case m.Transition.Fail:
-            assert failing_test, "failing test required for Fail transition"
+            assert failing_test, 'failing test required for Fail transition'
             row = query("""
                 select t.id, count(p.id) > 0 as is_regression
                 from attempts a, tests t left join progress p on t.id = p.tid
@@ -169,7 +170,7 @@ def set_attempt_state(uid, code, transition: m.Transition, failing_test: str = '
                 group by t.id""", {'aid': old['aid'], 'test': failing_test})[0]
             new_focus, is_regression = row['id'], row['is_regression']
             t = 'O' if is_regression else 'N'
-        case _: raise ValueError(f"unknown transition: {transition}")
+        case _: raise ValueError(f'unknown transition: {transition}')
 
     # state machine transition table:
     sm = {'s': {'X': 'b', 'P': 's'},  # they might do "tanco test" from start
@@ -197,9 +198,9 @@ def set_attempt_state(uid, code, transition: m.Transition, failing_test: str = '
 
     # n: one-letter code for new state (same as codes for o)
     n = sm[o].get(t)
-    print(f"transition: {o}.{t} -> ", n)
+    print(f'transition: {o}.{t} -> ', n)
     if not n:
-        raise ValueError(f"invalid transition: {o}.{t}")
+        raise ValueError(f'invalid transition: {o}.{t}')
     elif n == '?':  # c.X ('tanco next' from 'change' state)
         next_tests = get_next_tests(code, uid)
         if next_tests:
@@ -217,7 +218,7 @@ def set_attempt_state(uid, code, transition: m.Transition, failing_test: str = '
         case 'f': new_state = m.AttemptState.Fix
         case 'c': new_state = m.AttemptState.Change
         case 'd': new_state = m.AttemptState.Done
-        case _: raise ValueError(f"unknown state: {n}")
+        case _: raise ValueError(f'unknown state: {n}')
 
     commit("""
         update attempts set state=(:new_state), focus=(:new_focus)
@@ -229,7 +230,7 @@ def set_attempt_state(uid, code, transition: m.Transition, failing_test: str = '
 
 
 def uid_from_tokendata(sid, authid, username):
-    rows = query("select id from users where sid=? and authid=?", [sid, authid])
+    rows = query('select id from users where sid=? and authid=?', [sid, authid])
     if rows:
         uid = rows[0]['id']
     else:
@@ -247,9 +248,9 @@ def current_state(attempt):
 
 def current_status(attempt):
     try:
-        return query('''
+        return query("""
             select s.url as server, c.name as challenge, a.state, t.name as focus
             from challenges c, servers s, attempts a left join tests t on a.focus = t.id
-            where a.chid = c.id and c.sid = s.id and a.code=?''', [attempt])[0]
+            where a.chid = c.id and c.sid = s.id and a.code=?""", [attempt])[0]
     except IndexError:
         raise LookupError(f'attempt: {attempt}')

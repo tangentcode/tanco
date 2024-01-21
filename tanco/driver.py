@@ -2,25 +2,30 @@
 """
 command-line driver for tanco client.
 """
-import os, sys, cmd as cmdlib, jwt as jwtlib
+import cmd as cmdlib
+import os
 import sqlite3
-import webbrowser
 import subprocess
+import sys
+import webbrowser
 
-from . import runner, orgtest, database as db, model as m
+import jwt as jwtlib
+
+from . import database as db
+from . import model as m
+from . import orgtest, runner
 from .client import TancoClient
 from .model import Config, TestDescription
 
-
 class TancoDriver(cmdlib.Cmd):
-    prompt = "tanco> "
+    prompt = 'tanco> '
     completekey = ''
-    cmdqueue = ''
 
     def __init__(self):
         super().__init__()
         self.result = None    # for passing data between commands
         self.client = TancoClient()
+        self.cmdqueue = ['']
 
     # -- global database state --------------------------------
 
@@ -44,13 +49,13 @@ class TancoDriver(cmdlib.Cmd):
         except LookupError as e:
             print(e)
             return
-        print(f"logged in as {who['username']}" if who else "not logged in.")
+        print(f"logged in as {who['username']}" if who else 'not logged in.')
 
     @staticmethod
     def do_delete(arg):
         """Delete a challenge"""
         if not arg:
-            print("Usage: `delete <challenge name>`")
+            print('Usage: `delete <challenge name>`')
             return
         old = db.query('select id from challenges where name=?', [arg])
         if not old:
@@ -68,7 +73,7 @@ class TancoDriver(cmdlib.Cmd):
     def do_import(arg):
         """Import a challenge"""
         if not arg:
-            print("usage: import <challenge.org>")
+            print('usage: import <challenge.org>')
             return
         if os.path.exists(arg):
             c = orgtest.read_challenge(arg)
@@ -107,15 +112,15 @@ class TancoDriver(cmdlib.Cmd):
     def do_init(self, arg):
         """Create .tanco file in current directory"""
         if not (who := self.client.whoami()):
-            print("Please login first.")
+            print('Please login first.')
             return
 
         if os.path.exists('.tanco'):
             cfg = runner.load_config()
             if cfg.attempt:
-                print("Already initialized.")
+                print('Already initialized.')
                 print("Remove the 'attempt' field from .tanco if you")
-                print("really want to run `tanco init` again.")
+                print('really want to run `tanco init` again.')
                 return
         else:
             cfg = Config()
@@ -125,8 +130,8 @@ class TancoDriver(cmdlib.Cmd):
         else:
             self.do_challenges('')
         while not arg:
-            print("Enter the name of the challenge you want to work on.")
-            arg = input("> ")
+            print('Enter the name of the challenge you want to work on.')
+            arg = input('> ')
         match = [c for c in self.result if c['name'] == arg]
         if not match:
             print(f"Sorry, challenge '{arg}' not found.")
@@ -162,9 +167,9 @@ class TancoDriver(cmdlib.Cmd):
         cfg = runner.load_config()
         state = db.current_state(cfg.attempt)
         if state == 'start':
-            print("You have not started the challenge yet.")
-            print("Use `tanco check` to make sure your program runs.")
-            print("Use `tanco next` to fetch the first test.")
+            print('You have not started the challenge yet.')
+            print('Use `tanco check` to make sure your program runs.')
+            print('Use `tanco next` to fetch the first test.')
             return
         tests = db.get_next_tests(cfg.attempt, cfg.uid)
         self.result = (cfg.attempt, tests)
@@ -181,33 +186,33 @@ class TancoDriver(cmdlib.Cmd):
         elif arg == '-n':
             pass
         else:
-            print("All known tests have passed.")
-            print("Use `tanco test` to check that they still pass.")
-            print("Use `tanco next` to fetch the next test.")
+            print('All known tests have passed.')
+            print('Use `tanco test` to check that they still pass.')
+            print('Use `tanco next` to fetch the next test.')
 
     @staticmethod
     def do_version(_arg):
         """Print tanco version (by calling `pip show tanco`) """
-        subprocess.run(["pip", "show", "tanco"])
+        subprocess.run(['pip', 'show', 'tanco'])
 
     @staticmethod
     def do_status(_arg):
         """print information about the current attempt"""
         cfg = runner.load_config()
         if not cfg.attempt:
-            print("No attempt in progress.")
-            print("Use `tanco init` to start a new attempt.")
+            print('No attempt in progress.')
+            print('Use `tanco init` to start a new attempt.')
             return
         try:
             s = db.current_status(cfg.attempt)
-            print("server:", s['server'])
-            print("attempt:", cfg.attempt)
-            print("challenge:", s['challenge'])
+            print('server:', s['server'])
+            print('attempt:', cfg.attempt)
+            print('challenge:', s['challenge'])
             print(f"state: {s['state']} {s['focus'] or ''}")
-        except LookupError as e:
-            print("attempt: ", cfg.attempt)
-            print("attempt (or corresponding challenge) not found in database.")
-            print("consider running `tanco recover`")
+        except LookupError:
+            print('attempt: ', cfg.attempt)
+            print('attempt (or corresponding challenge) not found in database.')
+            print('consider running `tanco recover`')
 
     def do_next(self, _arg):
         """Fetch the next test from the server."""
@@ -216,7 +221,7 @@ class TancoDriver(cmdlib.Cmd):
         cfg = runner.load_config()
         state = db.current_state(cfg.attempt)
         if state == 'done':
-            print("You have already completed the challenge!")
+            print('You have already completed the challenge!')
             return
         elif state != 'start':
             # use `tanco show` to see if we already have the next test:
@@ -228,7 +233,7 @@ class TancoDriver(cmdlib.Cmd):
         # -- fetch the next test from the server
         tests = self.client.get_next(cfg.attempt)
         if not tests:
-            print("You have completed the challenge!")
+            print('You have completed the challenge!')
             db.set_attempt_state(cfg.uid, cfg.attempt, m.Transition.Done)
             # TODO: do something when you win
             return
@@ -268,11 +273,11 @@ class TancoDriver(cmdlib.Cmd):
 
 
 def show_help():
-    print("tanco command line client")
+    print('tanco command line client')
     print()
-    print("usage: tanco [command]")
+    print('usage: tanco [command]')
     print()
-    print("available commands:")
+    print('available commands:')
     print()
     data = [(meth[3:], getattr(TancoDriver, meth).__doc__)
             for meth in dir(TancoDriver)
@@ -280,15 +285,15 @@ def show_help():
     data.append(['shell', 'Run an interactive shell'])
     for cmd, doc in data:
         if cmd in ('EOF', 'help', 'q'): continue
-        print("  %-16s:  %s" % (cmd, doc))
+        print('  %-16s:  %s' % (cmd, doc))
 
 
 def main():
     db.ensure_sdb()
     d = TancoDriver()
-    if "-q" in sys.argv:
+    if '-q' in sys.argv:
         sys.argv.remove('-q')
-        d.prompt = ""
+        d.prompt = ''
     if len(sys.argv) > 1:
         cmd = sys.argv[1]
         if cmd == 'shell': d.cmdloop()

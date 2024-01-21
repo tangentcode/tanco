@@ -1,9 +1,9 @@
-import requests
 import os
+
+import requests
 
 from . import database as db
 from . import model as m
-
 
 class TancoClient:
     """
@@ -24,7 +24,7 @@ class TancoClient:
         return self.post('auth/pre', {})['token']
 
     def get_jwt(self, pre=None):
-        return self.post('auth/jwt', {"pre": pre})['token']
+        return self.post('auth/jwt', {'pre': pre})['token']
 
     def list_challenges(self):
         res = requests.get(self.url + 'c.json')
@@ -71,7 +71,7 @@ class TancoClient:
             'test_name': test_name,
             'result': result.to_data()})
 
-    def check_output(self, attempt: str, test_name: str, actual: [str]):
+    def check_output(self, attempt: str, test_name: str, actual: list[str]):
         who = self.whoami()
         if not who:
             raise LookupError('You must be logged in to check output.')

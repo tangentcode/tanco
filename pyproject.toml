@@ -31,3 +31,21 @@ build-backend = "setuptools.build_meta"
 requires = [
     "setuptools>=60",
     "setuptools-scm>=8.0"]
+
+
+[tool.ruff]
+line-length = 120
+select = [
+    'E', 'F', 'I',
+    'YTT', 'COM', 'T10', 'ISC', 'G', 'PIE', 'Q', 'RSE',
+    'PLC', 'PLE',
+    'RUF',
+]
+ignore = [
+  'E701', # multiple statements on one line
+]
+[tool.ruff.flake8-quotes]
+inline-quotes = 'single'
+multiline-quotes = 'double'
+[tool.ruff.isort]
+lines-after-imports = 1

@@ -1,11 +1,11 @@
 import asyncio
 import inspect
 import json
-import string
 import random
+import string
 
-import quart
 import jwt as jwtlib
+import quart
 
 from . import database as db
 from . import model as m
@@ -20,9 +20,9 @@ ok = None
 
 # this maps pre-tokens to async queues that
 # will eventually yield the jwt token.
-queues: {'pretoken': [asyncio.Queue]} = {}
+queues: dict[str, list[asyncio.Queue]] = {}
 
-observers: {'attempt': [asyncio.Queue]} = {}
+observers: dict[str, list[asyncio.Queue]] = {}
 
 
 # == sessions =================================================
@@ -34,7 +34,7 @@ def random_string(length=32):
 
 def get_session(skey: str) -> dict | None:
     # TODO: update the timestamp in the 'seen' column
-    rows = db.query("select * from sessions where skey=?", [skey])
+    rows = db.query('select * from sessions where skey=?', [skey])
     return json.loads(rows[0]['data']) if rows else None
 
 
@@ -48,7 +48,6 @@ def new_session(sid: int, uid: int) -> str:
 
 class PleaseLogin(Exception):
     """raised when a request requires a user to be logged in"""
-    pass
 
 
 def require_uid(f0):
@@ -61,14 +60,14 @@ def require_uid(f0):
         else:
             jsn = await quart.request.json
             if not jsn:
-                raise PleaseLogin()
+                raise PleaseLogin
             if not (jwt := jsn.get('jwt')):
                 raise LookupError('no jwt given')
             r = db.query('select uid from tokens where jwt=?', [jwt])
             if not r: raise LookupError('unrecognized jwt')
             uid = r[0]['uid']
         if not uid:
-            raise PleaseLogin()
+            raise PleaseLogin
         return await f0(uid=uid, *a, **kw)
     f.__name__ = f0.__name__
     return f
@@ -267,7 +266,7 @@ async def next_tests_for_attempt(code, uid):
 @require_uid
 async def send_attempt_pass(code, uid):
     state, focus = db.set_attempt_state(uid, code, m.Transition.Pass)
-    assert not focus, "all tests passed so focus should be empty"
+    assert not focus, 'all tests passed so focus should be empty'
     await notify_state(code, state, focus='')
     await notify(code, await quart.render_template('pass.html'))
     return ['ok']
@@ -284,9 +283,9 @@ async def send_attempt_fail(code, uid):
         tn = jsn['test_name']
         t = db.get_attempt_test(uid, code, tn)
     except KeyError:
-        return f'unknown test', 400
+        return 'unknown test', 400
     except LookupError:
-        return "unknown test or attempt", 400
+        return 'unknown test or attempt', 400
     state, focus = db.set_attempt_state(uid, code, m.Transition.Fail, failing_test=tn)
     await notify_state(code, state, focus)
     html = await quart.render_template('result.html', test=t, result=tr)
@@ -306,7 +305,7 @@ async def check_test_for_attempt(code, test_name, uid):
     try:
         t = db.get_attempt_test(uid, code, test_name)
     except LookupError:
-        return "unknown test or attempt", 404
+        return 'unknown test or attempt', 404
 
     r = t.check_output(actual)
     print('test result:', r.to_data())
@@ -385,7 +384,7 @@ def get_auth_jwt():
 async def post_auth_jwt():
     req = quart.request
     pre = (await req.json).get('pre') if req.is_json else (await req.form).get('pre')
-    assert pre in queues, f"pre-token not found: {pre}"
+    assert pre in queues, f'pre-token not found: {pre}'
     print(f'awaiting jwt for pre[{pre}]:')
     jwt = await queues[pre].get()
     del queues[pre]
@@ -414,20 +413,20 @@ async def post_auth_success():
     # TODO: validate the jwt
     jwt = JWT_OBJ.encode(data, JWT_KEY, alg='RS256')
 
-    db.commit("insert into tokens (uid, jwt) values (?, ?)",
+    db.commit('insert into tokens (uid, jwt) values (?, ?)',
               [uid, jwt])
 
     # now tell jwt to the listening command line client
     pre = frm.get('preToken')
     try:
         q = queues[pre]
-        print("queues[pre]:", q)
-        print("jwt:", jwt)
+        print('queues[pre]:', q)
+        print('jwt:', jwt)
         q.put_nowait(jwt)
     except KeyError:
-        return f"pre-token not found: {pre}", 500
+        return f'pre-token not found: {pre}', 500
     except asyncio.QueueFull:
-        return "pre-token already used", 500
+        return 'pre-token already used', 500
     return """
     <h1>Success!</h1>
     <p>You have successfully logged in.</p>
