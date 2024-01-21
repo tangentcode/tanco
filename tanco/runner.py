@@ -214,11 +214,14 @@ def get_custom_cfg(argv: [str]):
     return cfg
 
 
+TANCO_CHECK = '(tanco check)'
+
+
 def check(argv: [str]):
     cfg = get_custom_cfg(argv)
     program = spawn(cfg.program_args, cfg.use_shell)
     test = TestDescription()
-    test.name = 'check'
+    test.name = TANCO_CHECK
     test.head = 'tanco check'
     test.body = '\n'.join([
         "Tanco needs to be able to run your program.",
@@ -237,9 +240,11 @@ def check(argv: [str]):
 
 
 def fail(cfg: Config, msg: [str], tn: str = None, tr: m.TestResult = None):
+    if tn == TANCO_CHECK:
+        print("`tanco check` failed.")
     for line in msg:
         print(line)
-    if tn and tr:
+    if tn and tr and (tn != TANCO_CHECK):
         assert tr.kind == ResultKind.Fail, "Expected a failed test."
         c = TancoClient()
         c.send_fail(cfg.attempt, tn, tr)
