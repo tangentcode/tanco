@@ -153,7 +153,7 @@ class Config:
     # (for cases where stdin is not available)
     input_path: str = ''
     # path to test plan (if running directly from org file)
-    test_plan: str = ''
+    test_plan: str | None = ''
     # skip this many lines of input before sending
     # for cases where the language prints a header
     # that can't be suppressed. (e.g. Godot4 - you can turn

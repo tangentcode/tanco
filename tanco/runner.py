@@ -114,13 +114,13 @@ def run_test(cfg: Config, program: subprocess.Popen, test: TestDescription):
     local_check_output(cfg, actual, test)
 
 
-def clean_output(cfg: Config, actual: list[str]) -> list[str]:
-    actual = [line.strip() for line in actual.splitlines()]
-    actual = actual[cfg.skip_lines:]
+def clean_output(cfg: Config, actual: str) -> list[str]:
+    lines = [line.strip() for line in actual.splitlines()]
+    lines = lines[cfg.skip_lines:]
     # strip trailing blank lines
-    while actual and actual[-1] == '':
-        actual.pop()
-    return actual
+    while lines and lines[-1] == '':
+        lines.pop()
+    return lines
 
 
 def save_new_rule(attempt: str, test: str, rule: m.ValidationRule):

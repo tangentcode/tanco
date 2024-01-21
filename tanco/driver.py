@@ -20,12 +20,12 @@ from .model import Config, TestDescription
 class TancoDriver(cmdlib.Cmd):
     prompt = 'tanco> '
     completekey = ''
-    cmdqueue = ''
 
     def __init__(self):
         super().__init__()
         self.result = None    # for passing data between commands
         self.client = TancoClient()
+        self.cmdqueue = ['']
 
     # -- global database state --------------------------------
 
