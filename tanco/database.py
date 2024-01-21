@@ -198,19 +198,20 @@ def set_attempt_state(uid, code, transition: m.Transition, failing_test: str = '
 
     # n: one-letter code for new state (same as codes for o)
     n = sm[o].get(t)
-    print(f'transition: {o}.{t} -> ', n)
+    # print(f"transition: {o}.{t} -> ", n)
     if not n:
         raise ValueError(f'invalid transition: {o}.{t}')
-    elif n == '?':  # c.X ('tanco next' from 'change' state)
+    elif n in 'b?':  # c.X ('tanco next' from 'change' state)
         next_tests = get_next_tests(code, uid)
         if next_tests:
             n = 'b'
             new_focus = next_tests[0]['id']
         else:
             n = 'd'
-    elif n == 'b':
-        next_tests = get_next_tests(code, uid)
-        new_focus = next_tests[0]['id']
+
+    new_focus_name = ''
+    if new_focus:
+        new_focus_name = query('select name from tests where id=?', [new_focus])[0]['name']
 
     match n:
         case 's': new_state = m.AttemptState.Start
@@ -226,7 +227,7 @@ def set_attempt_state(uid, code, transition: m.Transition, failing_test: str = '
         """, {'new_state': new_state.name.lower(),
               'new_focus': new_focus, 'aid': old['aid']})
 
-    return new_state, failing_test
+    return new_state, new_focus_name
 
 
 def uid_from_tokendata(sid, authid, username):

@@ -254,7 +254,8 @@ async def show_test(**kw):
 @app.route('/a/<code>/next', methods=['POST'])
 @require_uid
 async def next_tests_for_attempt(code, uid):
-    db.set_attempt_state(uid, code, m.Transition.Next)
+    state, focus = db.set_attempt_state(uid, code, m.Transition.Next)
+    await notify_state(code, state, focus)
     rows = db.get_next_tests(code, uid)
     # hide the answers for now:
     for row in rows:
