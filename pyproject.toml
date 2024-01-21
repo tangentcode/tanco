@@ -1,6 +1,6 @@
 [project]
 name = "tanco"
-version = "0.0.4"
+version = "0.0.6"
 description='A tool for test-driven teaching.'
 dependencies = [
   "jwt ~= 1.3.1",
@@ -13,7 +13,7 @@ classifiers = [
   "License :: OSI Approved :: MIT License"]
 readme = "README.md"
 license = {text="MIT"}
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 
 [project.urls]
 "Homepage" = "https://tangentcode.com/"
@@ -25,5 +25,9 @@ tanco = "tanco.driver:main"
 
 
 [build-system]
-requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
+# setuptools-scm causes it to include all files tracked by git
+# (so we get sql/init.sql and other non-python files)
+requires = [
+    "setuptools>=60",
+    "setuptools-scm>=8.0"]

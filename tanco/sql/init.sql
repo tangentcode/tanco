@@ -4,7 +4,7 @@ create table meta (
     key text primary key,
     val text);
 
-insert into meta values ('schema_version', '1.0');
+insert into meta values ('schema_version', '0.1');
 
 
 create table servers (
