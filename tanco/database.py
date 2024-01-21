@@ -18,7 +18,7 @@ def ensure_sdb():
         dbc.commit()
 
 
-def query(sql, *a, **kw) -> [{}]:
+def query(sql, *a, **kw) -> list[dict]:
     """fetch a relation from the database"""
     dbc = sqlite3.connect(SDB_PATH)
     cur = dbc.execute(sql, *a, **kw)
@@ -42,7 +42,7 @@ def begin() -> sqlite3.Connection:
     return tx
 
 
-def chomp(lines: [str]) -> [str]:
+def chomp(lines: list[str]) -> list[str]:
     """remove trailing blank line"""
     if not lines: return []
     return lines[:-1] if lines[-1] == '' else lines
@@ -139,7 +139,7 @@ def get_attempt_test(uid, code, test_name):
     return test_from_row(rows[0])
 
 
-def set_attempt_state(uid, code, transition: m.Transition, failing_test: str = '') -> (m.AttemptState, str):
+def set_attempt_state(uid, code, transition: m.Transition, failing_test: str = '') -> tuple[m.AttemptState, str]:
     """set the state of an attempt according to transition table"""
     try:
         old = query("""

@@ -25,7 +25,7 @@ class ValidationRule:
 
 class LineDiffRule(ValidationRule):
 
-    def __init__(self, expected: [str]):
+    def __init__(self, expected: list[str]):
         self.expected = expected
 
     def to_data(self):
@@ -43,12 +43,12 @@ class TestFailure(AssertionError):
 
 class LineDiffFailure(TestFailure):
 
-    def __init__(self, actual: [str], diff: [str]):
+    def __init__(self, actual: list[str], diff: list[str]):
         self.actual = actual
         self.diff = diff
 
     @staticmethod
-    def from_lines(actual: [str], expected: [str]):
+    def from_lines(actual: list[str], expected: list[str]):
         return LineDiffFailure(actual, list(difflib.Differ().compare(actual, expected)))
 
     @staticmethod
@@ -69,7 +69,7 @@ class TestResult:
     kind: ResultKind
     error: TestFailure = None
     rule: ValidationRule = None
-    actual: [str] = field(default_factory=list)
+    actual: list[str] = field(default_factory=list)
 
     @staticmethod
     def from_data(data: dict) -> 'TestResult':
@@ -110,8 +110,8 @@ class TestDescription:
     name: str = ''
     head: str = ''
     body: str = ''
-    ilines: [str] = field(default_factory=list)
-    olines: [str] = field(default_factory=list)
+    ilines: list[str] = field(default_factory=list)
+    olines: list[str] = field(default_factory=list)
 
     @property
     def rule(self) -> ValidationRule | None:
@@ -120,7 +120,7 @@ class TestDescription:
         else:
             return LineDiffRule(self.olines)
 
-    def check_output(self, actual: [str]) -> TestResult:
+    def check_output(self, actual: list[str]) -> TestResult:
         if self.olines is None:
             return TestResult(ResultKind.AskServer)
         elif self.olines == actual:
@@ -138,7 +138,7 @@ class Challenge:
     name: str = ''
     server: str = ''
     title: str = ''
-    tests: [TestDescription] = field(default_factory=list)
+    tests: list[TestDescription] = field(default_factory=list)
 
 
 DEFAULT_TARGET = './my-program'
@@ -147,7 +147,7 @@ DEFAULT_TARGET = './my-program'
 @dataclass
 class Config:
     uid: int = 0
-    program_args: [str] = field(default_factory=lambda: [DEFAULT_TARGET])
+    program_args: list[str] = field(default_factory=lambda: [DEFAULT_TARGET])
     use_shell: bool = False
     # where to write the input to the child program
     # (for cases where stdin is not available)

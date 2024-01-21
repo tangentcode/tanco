@@ -71,7 +71,7 @@ class TancoClient:
             'test_name': test_name,
             'result': result.to_data()})
 
-    def check_output(self, attempt: str, test_name: str, actual: [str]):
+    def check_output(self, attempt: str, test_name: str, actual: list[str]):
         who = self.whoami()
         if not who:
             raise LookupError('You must be logged in to check output.')

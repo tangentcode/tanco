@@ -114,7 +114,7 @@ def run_test(cfg: Config, program: subprocess.Popen, test: TestDescription):
     local_check_output(cfg, actual, test)
 
 
-def clean_output(cfg: Config, actual: [str]) -> [str]:
+def clean_output(cfg: Config, actual: list[str]) -> list[str]:
     actual = [line.strip() for line in actual.splitlines()]
     actual = actual[cfg.skip_lines:]
     # strip trailing blank lines
@@ -128,7 +128,7 @@ def save_new_rule(attempt: str, test: str, rule: m.ValidationRule):
     db.save_rule(attempt, test, rule.to_data())
 
 
-def local_check_output(cfg: m.Config, actual: [str], test: TestDescription):
+def local_check_output(cfg: m.Config, actual: list[str], test: TestDescription):
     local_res = test.check_output(actual)
     match local_res.kind:
         case ResultKind.Pass: pass
@@ -195,7 +195,7 @@ def run_tests(cfg: Config):
             fail(cfg, e.error_lines(), test)
 
 
-def find_target(cfg: Config, argv: [str]) -> Config:
+def find_target(cfg: Config, argv: list[str]) -> Config:
     """returns the config, possibly overridden by command line args"""
     if len(argv) > 1:
         cfg.program_args = argv[1:]
@@ -209,7 +209,7 @@ def find_target(cfg: Config, argv: [str]) -> Config:
     raise FileNotFoundError(cfg.program_args[0])
 
 
-def get_custom_cfg(argv: [str]):
+def get_custom_cfg(argv: list[str]):
     """return a config object, possibly overridden by command line args"""
     cfg = load_config()
     try:
@@ -223,7 +223,7 @@ def get_custom_cfg(argv: [str]):
 TANCO_CHECK = '(tanco check)'
 
 
-def check(argv: [str]):
+def check(argv: list[str]):
     cfg = get_custom_cfg(argv)
     program = spawn(cfg.program_args, cfg.use_shell)
     test = TestDescription()
@@ -243,7 +243,7 @@ def check(argv: [str]):
         print('Run `tanco next` to start the first test.')
 
 
-def fail(cfg: Config, msg: [str], tn: str | None = None, tr: m.TestResult | None = None):
+def fail(cfg: Config, msg: list[str], tn: str | None = None, tr: m.TestResult | None = None):
     if tn == TANCO_CHECK:
         print('`tanco check` failed.')
     for line in msg:
@@ -272,7 +272,7 @@ def handle_unexpected_error(cfg: Config):
         sys.exit()
 
 
-def main(argv: [str]):
+def main(argv: list[str]):
     cfg = get_custom_cfg(argv)
     cmdline = cfg.program_args
     cmd = cmdline[0]
