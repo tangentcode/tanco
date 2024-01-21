@@ -154,7 +154,7 @@ def get_challenge(cfg: Config) -> Challenge:
     elif cfg.attempt:
         return db.challenge_from_attempt(cfg.attempt)
     else:
-        raise NoTestPlanError()
+        raise NoTestPlanError
 
 
 def run_tests(cfg: Config):
@@ -232,20 +232,18 @@ def check(argv: [str]):
     test.body = '\n'.join([
         'Tanco needs to be able to run your program.',
         'Please make sure that your program is marked as executable,',
-        'and that by default, it produces no output and returns exit code 0'
+        'and that by default, it produces no output and returns exit code 0',
     ])
     try:
         run_test(cfg, program, test)
-    except SystemExit:
-        raise
-    except:
+    except Exception:
         handle_unexpected_error(cfg)
     else:
         print(f"Tanco ran {' '.join(cfg.program_args)} successfully.")
         print('Run `tanco next` to start the first test.')
 
 
-def fail(cfg: Config, msg: [str], tn: str = None, tr: m.TestResult = None):
+def fail(cfg: Config, msg: [str], tn: str | None = None, tr: m.TestResult | None = None):
     if tn == TANCO_CHECK:
         print('`tanco check` failed.')
     for line in msg:
@@ -280,8 +278,6 @@ def main(argv: [str]):
     cmd = cmdline[0]
     try:
         run_tests(cfg)
-    except SystemExit:
-        pass
     except NoTestPlanError:
         fail(cfg, ['No challenge selected.'
                    'Use `tanco init` or set TEST_PLAN environment variable.'])
@@ -297,7 +293,7 @@ def main(argv: [str]):
                        'not trying to take arguments from the command line.'])
         else:
             handle_unexpected_error(cfg)
-    except:
+    except Exception:
         handle_unexpected_error(cfg)
 
 

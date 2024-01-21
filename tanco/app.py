@@ -20,9 +20,9 @@ ok = None
 
 # this maps pre-tokens to async queues that
 # will eventually yield the jwt token.
-queues: {'pretoken': [asyncio.Queue]} = {}
+queues: dict[str, list[asyncio.Queue]] = {}
 
-observers: {'attempt': [asyncio.Queue]} = {}
+observers: dict[str, list[asyncio.Queue]] = {}
 
 
 # == sessions =================================================
@@ -48,7 +48,6 @@ def new_session(sid: int, uid: int) -> str:
 
 class PleaseLogin(Exception):
     """raised when a request requires a user to be logged in"""
-    pass
 
 
 def require_uid(f0):
@@ -61,14 +60,14 @@ def require_uid(f0):
         else:
             jsn = await quart.request.json
             if not jsn:
-                raise PleaseLogin()
+                raise PleaseLogin
             if not (jwt := jsn.get('jwt')):
                 raise LookupError('no jwt given')
             r = db.query('select uid from tokens where jwt=?', [jwt])
             if not r: raise LookupError('unrecognized jwt')
             uid = r[0]['uid']
         if not uid:
-            raise PleaseLogin()
+            raise PleaseLogin
         return await f0(uid=uid, *a, **kw)
     f.__name__ = f0.__name__
     return f
@@ -284,7 +283,7 @@ async def send_attempt_fail(code, uid):
         tn = jsn['test_name']
         t = db.get_attempt_test(uid, code, tn)
     except KeyError:
-        return f'unknown test', 400
+        return 'unknown test', 400
     except LookupError:
         return 'unknown test or attempt', 400
     state, focus = db.set_attempt_state(uid, code, m.Transition.Fail, failing_test=tn)

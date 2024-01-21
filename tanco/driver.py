@@ -209,7 +209,7 @@ class TancoDriver(cmdlib.Cmd):
             print('attempt:', cfg.attempt)
             print('challenge:', s['challenge'])
             print(f"state: {s['state']} {s['focus'] or ''}")
-        except LookupError as e:
+        except LookupError:
             print('attempt: ', cfg.attempt)
             print('attempt (or corresponding challenge) not found in database.')
             print('consider running `tanco recover`')

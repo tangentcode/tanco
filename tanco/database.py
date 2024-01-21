@@ -12,7 +12,7 @@ def ensure_sdb():
     if not os.path.exists(SDB_PATH):
         print('Creating database at', SDB_PATH)
         import tanco
-        sql = open(os.path.join(*tanco.__path__ + ['sql', 'init.sql'])).read()
+        sql = open(os.path.join(*tanco.__path__, 'sql', 'init.sql')).read()
         dbc = begin()
         dbc.executescript(sql)
         dbc.commit()
@@ -248,9 +248,9 @@ def current_state(attempt):
 
 def current_status(attempt):
     try:
-        return query('''
+        return query("""
             select s.url as server, c.name as challenge, a.state, t.name as focus
             from challenges c, servers s, attempts a left join tests t on a.focus = t.id
-            where a.chid = c.id and c.sid = s.id and a.code=?''', [attempt])[0]
+            where a.chid = c.id and c.sid = s.id and a.code=?""", [attempt])[0]
     except IndexError:
         raise LookupError(f'attempt: {attempt}')

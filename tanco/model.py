@@ -10,7 +10,7 @@ AttemptState = Enum('AttemptState', 'Start Build Fix Change Done')
 
 class ValidationRule:
     def to_data(self):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     @staticmethod
     def from_data(data):
@@ -34,7 +34,7 @@ class LineDiffRule(ValidationRule):
 
 class TestFailure(AssertionError):
     def error_lines(self):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def print_error(self):
         for line in self.error_lines():
@@ -61,8 +61,7 @@ class LineDiffFailure(TestFailure):
             'data': {'actual': self.actual, 'diff': self.diff}}
 
     def error_lines(self):
-        return (['---- how to patch your output to pass the test ----']
-                + self.diff)
+        return (['---- how to patch your output to pass the test ----', *self.diff])
 
 
 @dataclass
@@ -76,7 +75,7 @@ class TestResult:
     def from_data(data: dict) -> 'TestResult':
         res = TestResult(kind=ResultKind[data['kind']])
         match res.kind:
-            case ResultKind.AskServer: raise RecursionError()
+            case ResultKind.AskServer: raise RecursionError
             case ResultKind.Fail:
                 err = data['error']
                 match err['kind']:
@@ -96,7 +95,7 @@ class TestResult:
             case 'Fail': return {'kind': kind, 'actual': self.actual,
                                  'error': self.error.to_data()}
             case 'Pass': return {'kind': kind, 'rule': self.rule.to_data()}
-            case 'AskServer': raise NotImplementedError()
+            case 'AskServer': raise NotImplementedError
 
     def is_pass(self):
         return self.kind == ResultKind.Pass
