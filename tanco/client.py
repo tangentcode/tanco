@@ -1,9 +1,9 @@
-import requests
 import os
+
+import requests
 
 from . import database as db
 from . import model as m
-
 
 class TancoClient:
     """

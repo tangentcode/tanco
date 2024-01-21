@@ -2,12 +2,18 @@
 """
 Test-running logic for validating tanco tests.
 """
-import sys, os, errno, subprocess, traceback, json
+import errno
+import json
+import os
+import subprocess
+import sys
+import traceback
 
-from . import orgtest, database as db
+from . import database as db
 from . import model as m
-from .model import TestDescription, Config, Challenge, ResultKind, TestFailure
+from . import orgtest
 from .client import TancoClient
+from .model import Challenge, Config, ResultKind, TestDescription, TestFailure
 
 USER_HELP = """
 Tanco can't find your code!

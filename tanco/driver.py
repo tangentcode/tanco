@@ -2,15 +2,20 @@
 """
 command-line driver for tanco client.
 """
-import os, sys, cmd as cmdlib, jwt as jwtlib
+import cmd as cmdlib
+import os
 import sqlite3
-import webbrowser
 import subprocess
+import sys
+import webbrowser
 
-from . import runner, orgtest, database as db, model as m
+import jwt as jwtlib
+
+from . import database as db
+from . import model as m
+from . import orgtest, runner
 from .client import TancoClient
 from .model import Config, TestDescription
-
 
 class TancoDriver(cmdlib.Cmd):
     prompt = "tanco> "

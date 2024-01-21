@@ -1,6 +1,7 @@
-import sqlite3
-from . import model as m
 import os
+import sqlite3
+
+from . import model as m
 
 SDB_PATH = os.environ.get('TANCO_SDB_PATH')
 if not SDB_PATH:
