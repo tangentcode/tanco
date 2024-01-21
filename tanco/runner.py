@@ -95,7 +95,6 @@ def send_cmds(cfg: Config, program, ilines):
         for cmd in ilines:
             program.stdin.write(cmd + "\n")
             program.stdin.flush()
-        program.stdin.close()
 
 
 def run_test(cfg: Config, program: subprocess.Popen, test: TestDescription):
@@ -103,6 +102,8 @@ def run_test(cfg: Config, program: subprocess.Popen, test: TestDescription):
     send_cmds(cfg, program, test.ilines)
     # listen for the response:
     (actual, _errs) = program.communicate(timeout=5)
+    program.wait()
+    program.stdin.close()
     # TODO: handle errors in the `errs` string
     actual = clean_output(cfg, actual)
     local_check_output(cfg, actual, test)
