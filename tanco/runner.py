@@ -95,7 +95,6 @@ def send_cmds(cfg: Config, program, ilines):
         for cmd in ilines:
             program.stdin.write(cmd + "\n")
             program.stdin.flush()
-        program.stdin.close()
 
 
 def run_test(cfg: Config, program: subprocess.Popen, test: TestDescription):
