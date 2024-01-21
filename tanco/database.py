@@ -89,7 +89,7 @@ def get_next_tests(aid: str, uid: int):
         select t.* from (
             select t.chid, t.grp
             from (attempts a left join tests t on a.chid=t.chid)
-                left join progress p on t.id=p.tid
+                left join progress p on a.id=p.aid and t.id=p.tid
             where a.code=(:code) and a.uid = (:uid)
             group by t.grp having count(p.id)=0
             order by t.grp limit 1) as g
@@ -207,6 +207,9 @@ def set_attempt_state(uid, code, transition: m.Transition, failing_test: str = '
             new_focus = next_tests[0]['id']
         else:
             n = 'd'
+    elif n == 'b':
+        next_tests = get_next_tests(code, uid)
+        new_focus = next_tests[0]['id']
 
     match n:
         case 's': new_state = m.AttemptState.Start
