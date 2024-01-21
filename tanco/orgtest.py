@@ -38,7 +38,7 @@ from collections import namedtuple
 
 from .model import Challenge, TestDescription
 
-OldTestDescription = namedtuple("TestDescription", ['name', 'lines'])
+OldTestDescription = namedtuple('TestDescription', ['name', 'lines'])
 
 
 class TestReaderStateMachine:
@@ -56,7 +56,7 @@ class TestReaderStateMachine:
             (1, '#+end_src',   0, self.on_end_test)]
         self.state = 2
         self.lineno = 0
-        self.next_name = self.prev_name = ""
+        self.next_name = self.prev_name = ''
         self.test_names = []  # only for unique names
         self.tests = []       # collected (name, lines) descriptions
         self.challenge = Challenge()
@@ -92,15 +92,15 @@ class TestReaderStateMachine:
             self.state = 0
 
     def on_test_name(self, line):
-        self.next_name = line.split(":")[1].strip()
+        self.next_name = line.split(':')[1].strip()
         assert self.next_name not in self.test_names, (
-            "duplicate name {0!r} on line {1}"
+            'duplicate name {0!r} on line {1}'
             .format(self.next_name, self.lineno))
         self.test_names.append(self.next_name)
 
     def on_begin_test(self, _line):
         assert self.next_name != self.prev_name, (
-            "missing or duplicate name for test on line {0}"
+            'missing or duplicate name for test on line {0}'
             .format(self.lineno))
         self.tests.append(OldTestDescription(self.next_name, []))
         self.focus = self.tests[-1].lines
@@ -126,7 +126,7 @@ class TestReaderStateMachine:
 
 def parse_test(test):
     lines = test.lines
-    while lines and lines[-1].strip() == "":
+    while lines and lines[-1].strip() == '':
         lines.pop()
     opcodes = {
         'title': None,
@@ -173,7 +173,7 @@ def tests(path=None):
 def main():
     if not os.path.exists('tests'): os.mkdir('tests')
     for i, test in enumerate(tests()):
-        path = "tests/test{0:03}.txt".format(i)
+        path = 'tests/test{0:03}.txt'.format(i)
         print("generating '{0}' in {1}"
               .format(test.name, path))
         io = open(path, 'w')
@@ -182,5 +182,5 @@ def main():
         io.close()
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

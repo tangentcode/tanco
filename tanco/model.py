@@ -61,7 +61,7 @@ class LineDiffFailure(TestFailure):
             'data': {'actual': self.actual, 'diff': self.diff}}
 
     def error_lines(self):
-        return (["---- how to patch your output to pass the test ----"]
+        return (['---- how to patch your output to pass the test ----']
                 + self.diff)
 
 
