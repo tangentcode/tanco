@@ -19,5 +19,7 @@ jobs:
         cache: pip
     - name: install
       run: pip3 install --quiet --editable . ruff
+    - name: unit test
+      run: python3 -m unittest discover --verbose
     - name: ruff
       run: ruff check --output-format=github .
