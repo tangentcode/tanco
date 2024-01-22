@@ -30,7 +30,7 @@ class TancoClient:
         res = requests.get(self.url + 'c.json')
         return res.json()
 
-    def attempt(self, challenge_name):
+    def attempt(self, challenge_name: str):
         who = self.whoami()
         if not who:
             raise LookupError('You must be logged in to attempt a challenge.')

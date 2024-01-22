@@ -1,18 +1,20 @@
 import os
+import pathlib
 import sqlite3
 
 from . import model as m
 
-SDB_PATH = os.environ.get('TANCO_SDB_PATH')
-if not SDB_PATH:
-    SDB_PATH = os.path.expanduser('~/.tanco.sdb')
+if 'TANCO_SDB_PATH' in os.environ:
+    SDB_PATH = pathlib.Path(os.environ['TANCO_SDB_PATH'])
+else:
+    SDB_PATH = pathlib.Path('~/.tanco.sdb').expanduser()
 
 
 def ensure_sdb():
-    if not os.path.exists(SDB_PATH):
+    if not SDB_PATH.exists():
         print('Creating database at', SDB_PATH)
         import tanco
-        sql = open(os.path.join(*tanco.__path__, 'sql', 'init.sql')).read()
+        sql = pathlib.Path(*tanco.__path__, 'sql', 'init.sql').read_text()
         dbc = begin()
         dbc.executescript(sql)
         dbc.commit()

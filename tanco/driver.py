@@ -36,7 +36,7 @@ class TancoDriver(cmdlib.Cmd):
             return
         sid = db.get_server_id(self.client.url)
         pre = self.client.get_pre_token()
-        webbrowser.open(self.client.url + '/auth/login?pre=' + pre)
+        webbrowser.open(self.client.url + 'auth/login?pre=' + pre)
         jwt = self.client.get_jwt(pre=pre)
         data = jwtlib.JWT().decode(jwt, do_verify=False)  # TODO: verify
         uid = db.uid_from_tokendata(sid, data['authid'], data['username'])
@@ -109,7 +109,7 @@ class TancoDriver(cmdlib.Cmd):
 
     # -- local project config ---------------------------------
 
-    def do_init(self, arg):
+    def do_init(self, arg: str):
         """Create .tanco file in current directory"""
         if not (who := self.client.whoami()):
             print('Please login first.')
