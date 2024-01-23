@@ -67,8 +67,8 @@ class LineDiffFailure(TestFailure):
 @dataclass
 class TestResult:
     kind: ResultKind
-    error: TestFailure = None
-    rule: ValidationRule = None
+    error: TestFailure | None = None
+    rule: ValidationRule | None = None
     actual: list[str] = field(default_factory=list)
 
     @staticmethod

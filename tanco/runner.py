@@ -134,6 +134,7 @@ def local_check_output(cfg: m.Config, actual: list[str], test: TestDescription):
         case ResultKind.Fail:
             # a regression! (test failed and have the rule,
             # so we have to tell the server)
+            assert local_res.error is not None
             fail(cfg, local_res.error.error_lines(), test.name, local_res)
         case ResultKind.AskServer:
             client = TancoClient()
@@ -191,7 +192,7 @@ def run_tests(cfg: Config):
             for line in test.ilines:
                 print(line)
             print()
-            fail(cfg, e.error_lines(), test)
+            fail(cfg, e.error_lines(), test.name)
 
 
 def find_target(cfg: Config, argv: list[str]) -> Config:

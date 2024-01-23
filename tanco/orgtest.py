@@ -38,7 +38,7 @@ from collections import namedtuple
 
 from .model import Challenge, TestDescription
 
-OldTestDescription = namedtuple('TestDescription', ['name', 'lines'])
+OldTestDescription = namedtuple('OldTestDescription', ['name', 'lines'])
 
 
 class TestReaderStateMachine:
