@@ -313,6 +313,11 @@ async def check_test_for_attempt(code, test_name, uid):
 
     if r.is_pass():
         db.save_progress(code, test_name, True)
+        state, focus = db.set_attempt_state(uid, code, m.Transition.Pass)
+        await notify_state(code, state, focus)
+    else:
+        state, focus = db.set_attempt_state(uid, code, m.Transition.Fail, failing_test=test_name)
+        await notify_state(code, state, focus)
 
     if obs := observers.get(code, []):
         html = await quart.render_template('result.html', test=t, result=r, actual=actual)

@@ -166,9 +166,9 @@ def set_attempt_state(uid, code, transition: m.Transition, failing_test: str = '
             assert failing_test, 'failing test required for Fail transition'
             row = query("""
                 select t.id, count(p.id) > 0 as is_regression
-                from attempts a, tests t left join progress p on t.id = p.tid
-                where a.id = (:aid) and a.chid = t.chid
-                  and a.id = p.aid and t.name = (:test)
+                from attempts a left join tests t on a.chid = t.chid
+                  left join progress p on t.id=p.tid and a.id = p.aid
+                where a.id = (:aid) and t.name = (:test)
                 group by t.id""", {'aid': old['aid'], 'test': failing_test})[0]
             new_focus, is_regression = row['id'], row['is_regression']
             t = 'O' if is_regression else 'N'
