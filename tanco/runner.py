@@ -74,21 +74,32 @@ class NoTestPlanError(Exception):
     pass
 
 
-def spawn(program_args, use_shell):
+def spawn(cfg: m.Config | None = None):
+    if not cfg:
+        cfg = load_config()
+    program_args, use_shell = cfg.program_args, cfg.use_shell
     try:
         return subprocess.Popen(program_args,
-                            shell=use_shell,
-                            universal_newlines=True,
-                            stdin=subprocess.PIPE,
-                            stdout=subprocess.PIPE)
+                                shell=use_shell,
+                                universal_newlines=True,
+                                stdin=subprocess.PIPE,
+                                stdout=subprocess.PIPE)
     except OSError as e:
         if e.errno == errno.ENOENT:
-            print("Couldn't find program:", program_args[0])
-            print('Make sure you have the right path.')
+            fail(cfg, [str(e),
+                       "Couldn't find program: %s" % program_args[0],
+                       "Make sure you have the right path."])
+        elif e.errno in [errno.EPERM, errno.EACCES]:
+            fail(cfg, [str(e),
+                       "Couldn't run %r due to a permission error." % program_args[0],
+                       "Make sure your program is marked as an executable."])
+        elif e.errno == errno.EPIPE:
+            fail(cfg, [str(e),
+                       "%r quit before reading any input." % program_args[0],
+                       "Make sure you are reading commands from standard input,",
+                       "not trying to take arguments from the command line."])
         else:
-            print(f"Couldn't run program '{program_args[0]}':")
-            print('  ', e)
-        sys.exit()
+            handle_unexpected_error(cfg)
 
 
 def send_cmds(cfg: Config, program, ilines):
@@ -163,7 +174,7 @@ def run_tests(cfg: Config):
     tests = challenge.tests
     try:
         for i, test in enumerate(tests):
-            program = spawn(cfg.program_args, cfg.use_shell)
+            program = spawn(cfg)
             run_test(cfg, program, test)
             # either it passed or threw exception
             print('.', end='')
@@ -225,15 +236,14 @@ TANCO_CHECK = '(tanco check)'
 
 def check(argv: list[str]):
     cfg = get_custom_cfg(argv)
-    program = spawn(cfg.program_args, cfg.use_shell)
+    program = spawn(cfg)
     test = TestDescription()
     test.name = TANCO_CHECK
     test.head = 'tanco check'
     test.body = '\n'.join([
         'Tanco needs to be able to run your program.',
         'Please make sure that your program is marked as executable,',
-        'and that by default, it produces no output and returns exit code 0',
-    ])
+        'and that by default, it produces no output and returns exit code 0'])
     try:
         run_test(cfg, program, test)
     except Exception:
@@ -274,25 +284,11 @@ def handle_unexpected_error(cfg: Config):
 
 def main(argv: list[str]):
     cfg = get_custom_cfg(argv)
-    cmdline = cfg.program_args
-    cmd = cmdline[0]
     try:
         run_tests(cfg)
     except NoTestPlanError:
         fail(cfg, ['No challenge selected.'
                    'Use `tanco init` or set TEST_PLAN environment variable.'])
-    except EnvironmentError as e:
-        if e.errno in [errno.EPERM, errno.EACCES]:
-            fail(cfg, [str(e),
-                       "Couldn't run %r due to a permission error." % cmd,
-                       'Make sure your program is marked as an executable.'])
-        elif e.errno == errno.EPIPE:
-            fail(cfg, [str(e),
-                       '%r quit before reading any input.' % cmd,
-                       'Make sure you are reading commands from standard input,',
-                       'not trying to take arguments from the command line.'])
-        else:
-            handle_unexpected_error(cfg)
     except Exception:
         handle_unexpected_error(cfg)
 
