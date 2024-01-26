@@ -6,7 +6,8 @@ dependencies = [
   "jwt ~= 1.3.1",
   "requests ~= 2.31.0",
   "quart ~= 0.19.4",
-  "hypercorn ~= 0.16.0" ]
+  "hypercorn ~= 0.16.0",
+  "websockets ~= 12.0"]
 maintainers = [
   { name = "Michal J Wallace", email = "michal.wallace@gmail.com" }]
 classifiers = [

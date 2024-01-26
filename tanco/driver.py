@@ -2,20 +2,24 @@
 """
 command-line driver for tanco client.
 """
+import asyncio
 import cmd as cmdlib
 import os
 import sqlite3
 import subprocess
 import sys
 import webbrowser
+import shlex
 
 import jwt as jwtlib
+import websockets as w
 
 from . import database as db
 from . import model as m
 from . import orgtest, runner
 from .client import TancoClient
 from .model import Config, TestDescription
+
 
 class TancoDriver(cmdlib.Cmd):
     prompt = 'tanco> '
@@ -255,6 +259,50 @@ class TancoDriver(cmdlib.Cmd):
             print(e)
 
         self.do_show()
+
+    async def ws_talk(self, ws: w.WebSocketCommonProtocol):
+        """communicate with a websocket for 'share' and 'bind' commands"""
+        tgt = runner.spawn(runner.load_config())
+        end_cmd = ';'
+        end_out = ''
+        async for msg in ws:
+            if msg.endswith(end_cmd): msg = msg[:-1]
+            if end_cmd in msg:
+                await ws.send("WARNING: ';' in message, ignoring")
+                continue
+            toks = shlex.split(msg)
+            if toks[0] == 'send':
+                cmd = shlex.join(toks[1:])
+                tgt.stdin.write(cmd + f'\n{end_cmd}\n')
+                tgt.stdin.flush()
+                lines = []
+                for line in tgt.stdout:
+                    line = line.rstrip()
+                    if line == end_out:
+                        break
+                    else:
+                        lines.append(line)
+                res = '\n'.join(lines)
+            else:
+                res = "RECV: " + msg
+            await ws.send(res)
+
+    def do_share(self, arg):
+        """hand control of your working directory over to the tanco server"""
+        print("TODO: implement `tanco share`")
+
+    def do_bind(self, arg):
+        """serve target program on a given port (default 1234)"""
+        port = int(arg) if arg else 1234
+
+        async def serve():
+            async with w.serve(self.ws_talk, "localhost", port):
+                print("serving websocket on port", port)
+                print("you can talk to it with:")
+                print(f"python -m websockets ws://localhost:{port}/")
+                await asyncio.Future()
+
+        asyncio.run(serve())
 
     @staticmethod
     def do_test(arg):
