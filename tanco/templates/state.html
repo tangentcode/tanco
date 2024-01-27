@@ -1,5 +1,5 @@
-<h2 id="attempt-state">
-  state: {{ data.state.name.lower() }}{% if data.focus %}
+<span id="attempt-state" class="state">
+  <h3 style="display: inline-block">state:</h3> {{ data.state.name.lower() }}{% if data.focus %}
   <a hx-target="#test-detail"
      href="/a/{{ data.code }}/t/{{ data.focus }}">{{ data.focus }}</a>
 {% endif %}
@@ -22,4 +22,25 @@
        </dl>
      </div>
    </span>
-</h2>
+  <button disabled class="has-tooltip">test
+    <span class="tooltip">
+      Run <code>tanco test</code> to run known tests.<br/>
+      Requires <code>tanco share</code>.
+    </span></button>
+  <button disabled class="has-tooltip">next
+    <span class="tooltip">
+      Run <code>tanco next</code> to move on to the next test.<br/>
+      Requires that all known tests are passing.<br/>
+      Requires <code>tanco share</code>.
+    </span></button>
+  <button disabled class="has-tooltip">back
+    <span class="tooltip">
+      Run <code>tanco back</code> on the client to temporarily forget the latest test.<br/>
+      Requires <code>tanco share</code>.
+    </span></button>
+  <button class="has-tooltip">shell
+    <span class="tooltip">
+      Run <code>tanco back</code> on the client to temporarily forget the latest test.<br/>
+      Requires <code>tanco share</code>.
+    </span></button>
+</span>

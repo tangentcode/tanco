@@ -209,7 +209,7 @@ async def attempt_challenge(name, uid):
 async def show_attempt(code, uid):
     # TODO: trap IndexError if no attempt found
     data = db.query("""
-        select a.code, a.state, t.name as focus, c.name as c_name, u.username as u_name
+        select a.code, a.state, a.ts, t.name as focus, c.name as c_name, u.username as u_name
         from challenges c, users u, attempts a left join tests t on a.focus = t.id
         where a.code = (:code) and u.id = (:uid)
         """, {'code': code, 'uid': uid})[0]

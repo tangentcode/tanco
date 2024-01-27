@@ -4,7 +4,8 @@
 
 <title>{{ data.c_name }} attempt by {{ data.u_name }}</title>
 
-<h2>{{ data.c_name }} attempt by {{ data.u_name }}</h2>
+<p style="position: absolute; padding:0; left:250px; top: 40px;">
+  {{ data.c_name }} attempt started {{ data.ts }}</p>
 
 
 <!-- websocket content -->
@@ -36,20 +37,25 @@
   </style>
   <!-- list progress (passed tests) -->
   <div id="progress">
-    <h2>tests</h2>
-    <ul hx-target="#test-detail">
-    {% for p in data.progress %}
-      <li><a href="/a/{{ data.code }}/t/{{ p.t_name }}">{{ p.t_name }}</a></li>
+    <h3>passed tests</h3>
+    <div hx-target="#test-detail">
+    {% for p in data.progress | reverse %}
+      <smaller><a href="/a/{{ data.code }}/t/{{ p.t_name }}">{{ p.t_name }}</a></smaller>
     {% endfor %}
-    </ul>
+    </div>
   </div>
 
-  <div>
+  <div style="width: calc(100% - 230px);">
     {% include "state.html" %}
+    <div id="shell">
+      <pre id="shell-output"></pre>
+      <form hx-post="/a/{{ data.code }}/shell">
+        <input name="input" type="text"/>
+        <button type="submit">send</button>
 
-    <div id="test-detail">
+      </form>
     </div>
-
+    <div id="test-detail"></div>
   </div>
 
 </div>
