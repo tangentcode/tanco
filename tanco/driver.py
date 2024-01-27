@@ -270,8 +270,9 @@ class TancoDriver(cmdlib.Cmd):
             if end_cmd in msg:
                 await ws.send("WARNING: ';' in message, ignoring")
                 continue
+            print('RECV:', msg)
             toks = shlex.split(msg)
-            if toks[0] == 'send':
+            if toks and toks[0] == 'send':
                 cmd = shlex.join(toks[1:])
                 tgt.stdin.write(cmd + f'\n{end_cmd}\n')
                 tgt.stdin.flush()
@@ -287,22 +288,30 @@ class TancoDriver(cmdlib.Cmd):
                 res = "RECV: " + msg
             await ws.send(res)
 
-    def do_share(self, arg):
+    def do_share(self, _arg):
         """hand control of your working directory over to the tanco server"""
-        print("TODO: implement `tanco share`")
+        code = runner.load_config().attempt
+
+        async def share():
+            url = self.client.url.replace('http', 'ws', 1) + f"a/{code}/share"
+            print(f"connecting to {url}")
+            ws = await w.connect(url)
+            await self.ws_talk(ws)
+
+        asyncio.run(share())
 
     def do_bind(self, arg):
         """serve target program on a given port (default 1234)"""
         port = int(arg) if arg else 1234
 
-        async def serve():
+        async def bind():
             async with w.serve(self.ws_talk, "localhost", port):
                 print("serving websocket on port", port)
                 print("you can talk to it with:")
                 print(f"python -m websockets ws://localhost:{port}/")
                 await asyncio.Future()
 
-        asyncio.run(serve())
+        asyncio.run(bind())
 
     @staticmethod
     def do_test(arg):

@@ -47,15 +47,16 @@ a:hover { color: #0162c2ff; background: #f3f0e5; }
     text-align: left;
  border: solid #333 1px; padding: 4px;  position:absolute }
 
+#shell.hidden { display: none }
 #shell {
     --shell-width: 500px;
     background: #999; border: solid #333 1px;
     padding: 10px; margin: 10px;
-    width: calc(var(--shell-width) + 20px); }
+    width: calc(var(--shell-width) + 10px); }
 #shell-output { background:#eee; height: 256px;
-  var(--shell-width); height: 10lh;
+  width: var(--shell-width); height: 22lh;
   overflow-y: scroll; overflow-x: auto; }
-#shell [name="input"] { width: calc(var(--shell-width) - 80px); }
+#shell [name="cmd"] { width: calc(var(--shell-width) - 60px); }
 #shell button { width: 50px; }
 
 .diff pre { display: block;  margin: 0; padding: 0; }

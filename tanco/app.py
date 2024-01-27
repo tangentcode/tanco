@@ -24,6 +24,8 @@ queues: dict[str, list[asyncio.Queue]] = {}
 
 observers: dict[str, list[asyncio.Queue]] = {}
 
+clients: dict[str, asyncio.Queue] = {}
+
 
 # == sessions =================================================
 
@@ -224,6 +226,7 @@ async def show_attempt(code, uid):
 @app.websocket('/a/<code>/live')
 # TODO: @require_uid (raises RuntimeError: Not within a request context)
 async def attempt_live(code):
+    """this is for browsers to interact with the server"""
     ws = quart.websocket
     q = asyncio.Queue()
     global observers
@@ -235,6 +238,40 @@ async def attempt_live(code):
             await ws.send(html)
     except asyncio.CancelledError:
         observers[code].remove(q)
+
+
+@app.websocket('/a/<code>/share')
+# TODO: @require_uid (raises RuntimeError: Not within a request context)
+async def attempt_share(code):
+    """this is for the command line client to interact with the server"""
+    ws = quart.websocket
+    q = asyncio.Queue()
+    global clients
+    clients[code] = q
+    try:
+        while True:
+            cmd = await q.get()
+            print('sending cmd to ws:', cmd)
+            await ws.send(cmd)
+            ws_res = await ws.receive()
+            print('ws_res:', ws_res)
+            await notify(code, f'<pre id="shell-output">{ws_res}</pre>', wrap=False)
+    except asyncio.CancelledError:
+        clients.pop(code)
+
+
+@app.route('/a/<code>/shell', methods=['POST'])
+@require_uid
+async def attempt_shell(code, uid):
+    frm = await quart.request.form
+    cmd = frm.get('cmd')
+    if not cmd:
+        return 'no cmd given', 400
+    if q := clients.get(code):
+        await q.put('send ' + cmd)
+    else:
+        return 'no client connected', 400
+    return "ok"
 
 
 @platonic('/a/<code>/t/<name>', 'test.html')

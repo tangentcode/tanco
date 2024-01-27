@@ -49,10 +49,10 @@
     {% include "state.html" %}
     <div id="shell">
       <pre id="shell-output"></pre>
-      <form hx-post="/a/{{ data.code }}/shell">
-        <input name="input" type="text"/>
+      <form hx-post="/a/{{ data.code }}/shell"
+            hx-swap="none">
+        <input name="cmd" type="text"/>
         <button type="submit">send</button>
-
       </form>
     </div>
     <div id="test-detail"></div>
