@@ -73,6 +73,9 @@ def load_config() -> Config:
 class NoTestPlanError(Exception):
     pass
 
+class StopTesting(Exception):
+    pass
+
 
 def spawn(cfg: m.Config | None = None):
     if not cfg:
@@ -253,6 +256,10 @@ def check(argv: list[str]):
         print('Run `tanco next` to start the first test.')
 
 
+def error(cfg: Config, msg: list[str]):
+    fail(cfg, msg)
+
+
 def fail(cfg: Config, msg: list[str], tn: str | None = None, tr: m.TestResult | None = None):
     if tn == TANCO_CHECK:
         print('`tanco check` failed.')
@@ -262,24 +269,20 @@ def fail(cfg: Config, msg: list[str], tn: str | None = None, tr: m.TestResult | 
         assert tr.kind == ResultKind.Fail, 'Expected a failed test.'
         c = TancoClient()
         c.send_fail(cfg.attempt, tn, tr)
-    sys.exit()
+    raise StopTesting()
 
 
 def handle_unexpected_error(cfg: Config):
-    try:
-        fail(cfg, ['-'*50,
-                   traceback.format_exc(),
-                   '-'*50,
-                   'Oh no! Tanco encountered an unexpected problem while',
-                   'attempting to run your program. Please report the above',
-                   'traceback in the issue tracker, so that we can help you',
-                   'with the problem and provide a better error message in',
-                   'the future.',
-                   '',
-                   '  https://github.com/tangentcode/tanco/issues'])
-    except Exception as e:
-        traceback.print_exception(type(e), e, None)
-        sys.exit()
+    fail(cfg, ['-'*50,
+               traceback.format_exc(),
+               '-'*50,
+               'Oh no! Tanco encountered an unexpected problem while',
+               'attempting to run your program. Please report the above',
+               'traceback in the issue tracker, so that we can help you',
+               'with the problem and provide a better error message in',
+               'the future.',
+               '',
+               '  https://github.com/tangentcode/tanco/issues'])
 
 
 def main(argv: list[str]):
@@ -287,8 +290,10 @@ def main(argv: list[str]):
     try:
         run_tests(cfg)
     except NoTestPlanError:
-        fail(cfg, ['No challenge selected.'
-                   'Use `tanco init` or set TEST_PLAN environment variable.'])
+        error(cfg, ['No challenge selected.'
+                    'Use `tanco init` or set TEST_PLAN environment variable.'])
+    except StopTesting:
+        pass
     except Exception:
         handle_unexpected_error(cfg)
 
