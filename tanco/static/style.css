@@ -2,7 +2,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Oswald&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Cairo&display=swap');
 
-body { background: #d6ca96 }
+body { background: #d6ca96; font-size: 12pt; }
 body, .tooltip { font-family: 'Cairo', sans-serif; }
 h1 { font-family: 'Squada One', sans-serif; margin:0; padding-top: 10px; }
 h2, h3 { font-family: 'Oswald', sans-serif; margin:0;}
@@ -42,7 +42,7 @@ a:hover { color: #0162c2ff; background: #f3f0e5; }
  border: solid #333 1px; background: #999; }
 .has-tooltip:hover .tooltip { visibility: visible;
    font-weight:normal;
-   font-size:10pt; }
+   font-size: smaller; }
 .tooltip { visibility: hidden; background: white; color: #666;
     text-align: left;
  border: solid #333 1px; padding: 4px;  position:absolute }
