@@ -248,6 +248,7 @@ async def attempt_share(code):
     q = asyncio.Queue()
     global clients
     clients[code] = q
+    await ws.send('hello')
     try:
         while True:
             cmd = await q.get()
@@ -264,11 +265,21 @@ async def attempt_share(code):
 @require_uid
 async def attempt_shell(code, uid):
     frm = await quart.request.form
-    cmd = frm.get('cmd')
-    if not cmd:
-        return 'no cmd given', 400
+    msg = frm.get('msg')
+    if not msg:
+        return 'no msg given', 400
     if q := clients.get(code):
-        await q.put('send ' + cmd)
+        await q.put('send ' + msg)
+    else:
+        return 'no client connected', 400
+    return "ok"
+
+
+@app.route('/a/<code>/cmd/<cmd>', methods=['POST'])
+@require_uid
+async def attempt_cmd(code, uid, cmd):
+    if q := clients.get(code):
+        await q.put(cmd)
     else:
         return 'no client connected', 400
     return "ok"

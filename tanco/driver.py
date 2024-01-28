@@ -29,7 +29,12 @@ class TancoDriver(cmdlib.Cmd):
         super().__init__()
         self.result = None    # for passing data between commands
         self.client = TancoClient()
+        self.target = None    # target program
         self.cmdqueue = ['']
+        self.end_cmd = ';'
+        self.end_out = ''
+        self.output = ''
+
 
     # -- global database state --------------------------------
 
@@ -260,32 +265,58 @@ class TancoDriver(cmdlib.Cmd):
 
         self.do_show()
 
+    def do_spawn(self, _arg):
+        self.target = runner.spawn(runner.load_config())
+
+    def ensure_target(self):
+        if not self.target:
+            self.do_spawn('')
+
+    def do_send(self, msg, suppress=False):
+        self.ensure_target()
+        if msg.endswith(self.end_cmd): msg = msg[:-1]
+        self.target.stdin.write(msg + f'\n{self.end_cmd}\n')
+        self.target.stdin.flush()
+        lines = []
+        for line in self.target.stdout:
+            line = line.rstrip()
+            if line == self.end_out:
+                break
+            else:
+                lines.append(line)
+        self.output = '\n'.join(lines)
+        if not suppress:
+            print(self.output)
+
     async def ws_talk(self, ws: w.WebSocketCommonProtocol):
         """communicate with a websocket for 'share' and 'bind' commands"""
-        tgt = runner.spawn(runner.load_config())
-        end_cmd = ';'
-        end_out = ''
+        self.ensure_target()
+
         async for msg in ws:
-            if msg.endswith(end_cmd): msg = msg[:-1]
-            if end_cmd in msg:
+            if self.end_cmd in msg:
                 await ws.send("WARNING: ';' in message, ignoring")
                 continue
             print('RECV:', msg)
-            toks = shlex.split(msg)
-            if toks and toks[0] == 'send':
-                cmd = shlex.join(toks[1:])
-                tgt.stdin.write(cmd + f'\n{end_cmd}\n')
-                tgt.stdin.flush()
-                lines = []
-                for line in tgt.stdout:
-                    line = line.rstrip()
-                    if line == end_out:
-                        break
-                    else:
-                        lines.append(line)
-                res = '\n'.join(lines)
+            tokens = shlex.split(msg)
+            if tokens:
+                match tokens[0]:
+                    case 'send':
+                        cmd = shlex.join(tokens[1:])
+                        self.do_send(cmd, suppress=True)
+                        res = self.output
+                    case 'test':
+                        self.do_test('')
+                        res = 'ran `tanco test`'
+                    case 'next':
+                        self.do_next('')
+                        res = 'ran `tanco next`'
+                    case 'spawn':
+                        self.do_spawn('')
+                        res = 'ran `tanco spawn`'
+                    case _: res = "ERROR: unknown command"
             else:
                 res = "RECV: " + msg
+            print('res:', res)
             await ws.send(res)
 
     def do_share(self, _arg):
@@ -296,6 +327,8 @@ class TancoDriver(cmdlib.Cmd):
             url = self.client.url.replace('http', 'ws', 1) + f"a/{code}/share"
             print(f"connecting to {url}")
             ws = await w.connect(url)
+            assert 'hello' == await ws.recv()
+            print("connected!")
             await self.ws_talk(ws)
 
         asyncio.run(share())

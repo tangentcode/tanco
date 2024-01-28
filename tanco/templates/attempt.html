@@ -47,11 +47,32 @@
 
   <div style="width: calc(100% - 230px);">
     {% include "state.html" %}
+    <div id="buttons" hx-swap="none">
+      <button class="has-tooltip" hx-post="/a/{{ data.code }}/cmd/test">test
+        <span class="tooltip">
+        Run <code>tanco test</code> to run known tests.<br/>
+        Requires <code>tanco share</code>.</span></button>
+      <button class="has-tooltip" hx-post="/a/{{ data.code }}/cmd/next">next
+        <span class="tooltip">
+        Run <code>tanco next</code> to move on to the next test.<br/>
+        Requires that all known tests are passing.<br/>
+        Requires <code>tanco share</code>.</span></button>
+      <button class="has-tooltip" type="button" onclick="toggleShell()">shell
+        <span class="tooltip">
+        Toggles websocket shell for talking to your target program.<br/>
+        Requires <code>tanco share</code>.</span></button>
+      <!--
+      <button class="has-tooltip" hx-post="/a/{{ data.code }}/cmd/spawn">spawn
+        <span class="tooltip">
+        Run <code>tanco spawn</code> to start (or restart) your target program.<br/>
+        Requires <code>tanco share</code>.</span></button>
+        -->
+    </div>
     <div id="shell">
       <pre id="shell-output"></pre>
       <form hx-post="/a/{{ data.code }}/shell"
             hx-swap="none">
-        <input name="cmd" type="text"/>
+        <input name="msg" type="text"/>
         <button type="submit">send</button>
       </form>
     </div>
