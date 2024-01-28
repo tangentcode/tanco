@@ -84,7 +84,7 @@ async def handle_please_login(_e):
 # == websocket notifications ==================================
 
 async def notify(code, data, wrap=True):
-    data = f'<span id="test-detail">{data}</span>' if wrap else data
+    data = f'<div id="test-detail">{data}</div>' if wrap else data
     for o in observers.get(code, []):
         await o.put(data)
 
@@ -366,6 +366,8 @@ async def check_test_for_attempt(code, test_name, uid):
     else:
         state, focus = db.set_attempt_state(uid, code, m.Transition.Fail, failing_test=test_name)
         await notify_state(code, state, focus)
+        html = await quart.render_template('result.html', test=t, result=r)
+        await notify(code, html)
 
     if obs := observers.get(code, []):
         html = await quart.render_template('result.html', test=t, result=r, actual=actual)
