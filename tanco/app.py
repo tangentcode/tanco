@@ -91,8 +91,10 @@ async def notify(code, data, wrap=True):
 
 async def notify_client_state(code):
     data = dict(name="client", status='connected')
+    data['attrs'] = 'hx-on::load=clientHere()'
     if not clients.get(code):
         data['status'] = 'disconnected'
+        data['attrs'] = 'hx-on::load=clientGone()'
 
     html = await quart.render_template_string('''
         {% import 'websocket.html' as ws %}

@@ -9,6 +9,12 @@
     htmx.config.scrollIntoViewOnBoost = false;
     function toggleShell() {
       document.getElementById('shell').classList.toggle('hidden') }
+    function clientGone() {
+      for (let el of document.getElementsByTagName('button')) {
+        el.disabled = true; }};
+    function clientHere() {
+      for (let el of document.getElementsByTagName('button')) {
+        el.disabled = false; }};
   </script>
 </head>
 <body>

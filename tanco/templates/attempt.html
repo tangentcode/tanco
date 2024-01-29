@@ -19,10 +19,13 @@
     let ws = new WebSocket(url)
     const el = document.getElementById('browser-ws')
     el.addEventListener('htmx:wsOpen', e=> {
+      // can't cache this because element is replaced
+      document.getElementById('client-ws').classList.remove('hidden');
       el.classList.remove('disconnected');
       el.classList.add('connected');
       el.querySelector('.status').innerHTML='connected'; });
     el.addEventListener('htmx:wsClose', e=> {
+      document.getElementById('client-ws').classList.add('hidden');
       el.classList.remove('connected');
       el.classList.add('disconnected');
       el.querySelector('.status').innerHTML='disconnected'});
@@ -50,21 +53,21 @@
   <div style="width: calc(100% - 230px);">
     {% include "state.html" %}
     <div id="buttons" hx-swap="none">
-      <button class="has-tooltip" hx-post="/a/{{ data.code }}/cmd/test">test
+      <button disabled class="has-tooltip" hx-post="/a/{{ data.code }}/cmd/test">test
         <span class="tooltip">
         Run <code>tanco test</code> to run known tests.<br/>
         Requires <code>tanco share</code>.</span></button>
-      <button class="has-tooltip" hx-post="/a/{{ data.code }}/cmd/next">next
+      <button disabled class="has-tooltip" hx-post="/a/{{ data.code }}/cmd/next">next
         <span class="tooltip">
         Run <code>tanco next</code> to move on to the next test.<br/>
         Requires that all known tests are passing.<br/>
         Requires <code>tanco share</code>.</span></button>
-      <button class="has-tooltip" type="button" onclick="toggleShell()">shell
+      <button disabled  class="has-tooltip" type="button" onclick="toggleShell()">shell
         <span class="tooltip">
         Toggles websocket shell for talking to your target program.<br/>
         Requires <code>tanco share</code>.</span></button>
       <!--
-      <button class="has-tooltip" hx-post="/a/{{ data.code }}/cmd/spawn">spawn
+      <button disabled class="has-tooltip" hx-post="/a/{{ data.code }}/cmd/spawn">spawn
         <span class="tooltip">
         Run <code>tanco spawn</code> to start (or restart) your target program.<br/>
         Requires <code>tanco share</code>.</span></button>
@@ -75,7 +78,7 @@
       <form hx-post="/a/{{ data.code }}/shell"
             hx-swap="none">
         <input name="msg" type="text"/>
-        <button type="submit">send</button>
+        <button disabled type="submit">send</button>
       </form>
     </div>
     <div id="test-detail"></div>
