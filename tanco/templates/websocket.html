@@ -1,0 +1,8 @@
+{% macro ws(name, status, attrs='') %}
+<div id="{{ name }}-ws" class="ws has-tooltip {{ status }}"
+  {{ attrs }}>
+  <div class="tooltip">{{ name }} websocket:
+    <span class="status">{{ status }}</span>
+  </div>
+</div>
+{% endmacro %}

@@ -89,6 +89,18 @@ async def notify(code, data, wrap=True):
         await o.put(data)
 
 
+async def notify_client_state(code):
+    data = dict(name="client", status='connected')
+    if not clients.get(code):
+        data['status'] = 'disconnected'
+
+    html = await quart.render_template_string('''
+        {% import 'websocket.html' as ws %}
+        {{ ws.ws(**data) }}
+        ''', data=data)
+    await notify(code, html, wrap=False)
+
+
 async def notify_state(code, state, focus):
     data = dict(state=state, focus=focus, code=code)
     html = await quart.render_template('state.html', data=data)
@@ -232,7 +244,7 @@ async def attempt_live(code):
     global observers
     observers.setdefault(code, []).append(q)
     try:
-        await ws.send('')
+        await notify_client_state(code)
         while True:
             html = await q.get()
             await ws.send(html)
@@ -249,6 +261,7 @@ async def attempt_share(code):
     global clients
     clients[code] = q
     await ws.send('hello')
+    await notify_client_state(code)
     try:
         while True:
             cmd = await q.get()
@@ -259,6 +272,7 @@ async def attempt_share(code):
             await notify(code, f'<pre id="shell-output">{ws_res}</pre>', wrap=False)
     except asyncio.CancelledError:
         clients.pop(code)
+        await notify_client_state(code)
 
 
 @app.route('/a/<code>/shell', methods=['POST'])

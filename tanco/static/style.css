@@ -33,10 +33,15 @@ a:hover { color: #0162c2ff; background: #f3f0e5; }
 
 #whoami { position:absolute; top: 20px; left: var(--top-info-left); }
 
-#ws { position:absolute; top: 30px; right: 10px;
+.ws { position:absolute; top: 30px;
   width: 10px; height: 10px; border-radius: 10px;
   border: solid #333 1px; background: #999; }
-#ws .tooltip { position: relative; left: -100px; width: 100px; }
+.ws .tooltip { position: relative; left: -100px; width: 100px; }
+.ws.connected { background-color: limegreen; }
+.ws.disconnected { background-color: tomato; }
+#browser-ws { right: 10px; }
+#client-ws { right: 30px; }
+
 
 .has-tooltip:hover .tooltip { visibility: visible;
   transition-delay: 500ms;

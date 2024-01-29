@@ -9,20 +9,22 @@
 
 
 <!-- websocket content -->
-<div id="ws" class="has-tooltip" hx-ext="ws" ws-connect="live">
-  <div class="tooltip">websocket: <span class="status">waiting to connect</span></div>
-</div>
+{% import "websocket.html" as ws %}
+{{ ws.ws("client", "waiting") }}
+{{ ws.ws("browser","waiting", 'hx-ext=ws ws-connect=live') }}
 <script>
   htmx.createWebSocket = function(uri) {
     let url = `${document.location}/${uri}`.replace('http','ws')
     console.log('connecting to:', url)
     let ws = new WebSocket(url)
-    const el = document.getElementById('ws')
+    const el = document.getElementById('browser-ws')
     el.addEventListener('htmx:wsOpen', e=> {
-      el.style.backgroundColor = 'limegreen';
+      el.classList.remove('disconnected');
+      el.classList.add('connected');
       el.querySelector('.status').innerHTML='connected'; });
     el.addEventListener('htmx:wsClose', e=> {
-      el.style.backgroundColor = 'tomato';
+      el.classList.remove('connected');
+      el.classList.add('disconnected');
       el.querySelector('.status').innerHTML='disconnected'});
     return ws }
 </script>

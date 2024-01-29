@@ -73,6 +73,7 @@ def load_config() -> Config:
 class NoTestPlanError(Exception):
     pass
 
+
 class StopTesting(Exception):
     pass
 
