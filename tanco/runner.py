@@ -92,16 +92,16 @@ def spawn(cfg: m.Config | None = None):
         if e.errno == errno.ENOENT:
             fail(cfg, [str(e),
                        "Couldn't find program: %s" % program_args[0],
-                       "Make sure you have the right path."])
+                       'Make sure you have the right path.'])
         elif e.errno in [errno.EPERM, errno.EACCES]:
             fail(cfg, [str(e),
                        "Couldn't run %r due to a permission error." % program_args[0],
-                       "Make sure your program is marked as an executable."])
+                       'Make sure your program is marked as an executable.'])
         elif e.errno == errno.EPIPE:
             fail(cfg, [str(e),
-                       "%r quit before reading any input." % program_args[0],
-                       "Make sure you are reading commands from standard input,",
-                       "not trying to take arguments from the command line."])
+                       '%r quit before reading any input.' % program_args[0],
+                       'Make sure you are reading commands from standard input,',
+                       'not trying to take arguments from the command line.'])
         else:
             handle_unexpected_error(cfg)
 
@@ -270,7 +270,7 @@ def fail(cfg: Config, msg: list[str], tn: str | None = None, tr: m.TestResult | 
         assert tr.kind == ResultKind.Fail, 'Expected a failed test.'
         c = TancoClient()
         c.send_fail(cfg.attempt, tn, tr)
-    raise StopTesting()
+    raise StopTesting
 
 
 def handle_unexpected_error(cfg: Config):

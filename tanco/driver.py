@@ -5,11 +5,11 @@ command-line driver for tanco client.
 import asyncio
 import cmd as cmdlib
 import os
+import shlex
 import sqlite3
 import subprocess
 import sys
 import webbrowser
-import shlex
 
 import jwt as jwtlib
 import websockets as w
@@ -19,7 +19,6 @@ from . import model as m
 from . import orgtest, runner
 from .client import TancoClient
 from .model import Config, TestDescription
-
 
 class TancoDriver(cmdlib.Cmd):
     prompt = 'tanco> '
@@ -313,9 +312,9 @@ class TancoDriver(cmdlib.Cmd):
                     case 'spawn':
                         self.do_spawn('')
                         res = 'ran `tanco spawn`'
-                    case _: res = "ERROR: unknown command"
+                    case _: res = 'ERROR: unknown command'
             else:
-                res = "RECV: " + msg
+                res = 'RECV: ' + msg
             print('res:', res)
             await ws.send(res)
 
@@ -324,11 +323,11 @@ class TancoDriver(cmdlib.Cmd):
         code = runner.load_config().attempt
 
         async def share():
-            url = self.client.url.replace('http', 'ws', 1) + f"a/{code}/share"
-            print(f"connecting to {url}")
+            url = self.client.url.replace('http', 'ws', 1) + f'a/{code}/share'
+            print(f'connecting to {url}')
             ws = await w.connect(url)
             assert 'hello' == await ws.recv()
-            print("connected!")
+            print('connected!')
             await self.ws_talk(ws)
 
         asyncio.run(share())
@@ -338,10 +337,10 @@ class TancoDriver(cmdlib.Cmd):
         port = int(arg) if arg else 1234
 
         async def bind():
-            async with w.serve(self.ws_talk, "localhost", port):
-                print("serving websocket on port", port)
-                print("you can talk to it with:")
-                print(f"python -m websockets ws://localhost:{port}/")
+            async with w.serve(self.ws_talk, 'localhost', port):
+                print('serving websocket on port', port)
+                print('you can talk to it with:')
+                print(f'python -m websockets ws://localhost:{port}/')
                 await asyncio.Future()
 
         asyncio.run(bind())

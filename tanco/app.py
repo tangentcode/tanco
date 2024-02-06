@@ -90,16 +90,16 @@ async def notify(code, data, wrap=True):
 
 
 async def notify_client_state(code):
-    data = dict(name="client", status='connected')
+    data = dict(name='client', status='connected')
     data['attrs'] = 'hx-on::load=clientHere()'
     if not clients.get(code):
         data['status'] = 'disconnected'
         data['attrs'] = 'hx-on::load=clientGone()'
 
-    html = await quart.render_template_string('''
+    html = await quart.render_template_string("""
         {% import 'websocket.html' as ws %}
         {{ ws.ws(**data) }}
-        ''', data=data)
+        """, data=data)
     await notify(code, html, wrap=False)
 
 
@@ -288,7 +288,7 @@ async def attempt_shell(code, uid):
         await q.put('send ' + msg)
     else:
         return 'no client connected', 400
-    return "ok"
+    return 'ok'
 
 
 @app.route('/a/<code>/cmd/<cmd>', methods=['POST'])
@@ -298,7 +298,7 @@ async def attempt_cmd(code, uid, cmd):
         await q.put(cmd)
     else:
         return 'no client connected', 400
-    return "ok"
+    return 'ok'
 
 
 @platonic('/a/<code>/t/<name>', 'test.html')
