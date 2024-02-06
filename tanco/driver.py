@@ -292,6 +292,7 @@ class TancoDriver(cmdlib.Cmd):
         self.ensure_target()
 
         async for msg in ws:
+            assert isinstance(msg, str)
             if self.end_cmd in msg:
                 await ws.send("WARNING: ';' in message, ignoring")
                 continue
