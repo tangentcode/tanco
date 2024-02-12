@@ -5,6 +5,9 @@
 <title>{{ data.c_name }} attempt by {{ data.u_name }}</title>
 
 <p style="position: absolute; padding:0; left:var(--top-info-left); top: 40px;">
+  {% if data.a_name %}
+     <strong>{{ data.a_name }}</strong>:
+  {% endif %}
   {{ data.c_name }} attempt started {{ data.ts }}</p>
 
 

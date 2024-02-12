@@ -178,7 +178,7 @@ async def me(uid):
         where u.id=?
         """, [uid])[0]
     data['attempts'] = db.query("""
-        select a.ts, c.name as c_name, c.title, a.code
+        select a.ts, a.name as a_name, c.name as c_name, c.title, a.code
         from attempts a, challenges c, users u
         where a.chid=c.id and u.id=? and a.uid=u.id
         """, [uid])
@@ -225,7 +225,8 @@ async def attempt_challenge(name, uid):
 async def show_attempt(code, uid):
     # TODO: trap IndexError if no attempt found
     data = db.query("""
-        select a.code, a.state, a.ts, t.name as focus, c.name as c_name, u.username as u_name
+        select a.code, a.state, a.ts, a.name as a_name,
+               t.name as focus, c.name as c_name, u.username as u_name
         from challenges c, users u, attempts a left join tests t on a.focus = t.id
         where a.code = (:code) and u.id = (:uid)
         """, {'code': code, 'uid': uid})[0]
