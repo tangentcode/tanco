@@ -53,20 +53,24 @@ class TancoClient:
             raise LookupError('You must be logged in to get next test.')
         return self.post('a/' + attempt + '/next', {'jwt': who['jwt']})
 
-    def send_pass(self, attempt):
+    def send_pass(self, cfg: m.Config):
+        if not cfg.attempt:
+            return
         who = self.whoami()
         if not who:
             raise LookupError('You must be logged in to send result.')
-        db.set_attempt_state(who['id'], attempt, m.Transition.Pass)
-        return self.post('a/' + attempt + '/pass', {
+        db.set_attempt_state(who['id'], cfg.attempt, m.Transition.Pass)
+        return self.post('a/' + cfg.attempt + '/pass', {
             'jwt': who['jwt']})
 
-    def send_fail(self, attempt, test_name: str, result: m.TestResult):
+    def send_fail(self, cfg: m.Config, test_name: str, result: m.TestResult):
+        if not cfg.attempt:
+            return
         who = self.whoami()
         if not who:
             raise LookupError('You must be logged in to send result.')
-        db.set_attempt_state(who['id'], attempt, m.Transition.Fail, test_name)
-        return self.post('a/' + attempt + '/fail', {
+        db.set_attempt_state(who['id'], cfg.attempt, m.Transition.Fail, test_name)
+        return self.post('a/' + cfg.attempt + '/fail', {
             'jwt': who['jwt'],
             'test_name': test_name,
             'result': result.to_data()})

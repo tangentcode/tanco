@@ -138,27 +138,36 @@ class TancoDriver(cmdlib.Cmd):
         else:
             self.do_challenges('')
         while not arg:
-            print('Enter the name of the challenge you want to work on.')
+            print('Enter the name or number of the challenge you want to work on.')
             arg = input('> ')
-        match = [c for c in self.result if c['name'] == arg]
-        if not match:
-            print(f"Sorry, challenge '{arg}' not found.")
-            return
-        c = match[0]
-        sid = db.get_server_id(self.client.url)
-        db.commit("""insert or ignore into challenges
-            (sid, name, title) values (?, ?, ?)
-            """, [sid, c['name'], c['title']])
-        chid = db.query('select id from challenges where name=?', [c['name']])[0]['id']
-        # now we have arg = a valid challenge name on the server,
-        # so we have to initialize the attempt on both the remote
-        # and local databases.
-        code = self.client.attempt(arg)
-        uid = who['id']
-        db.commit("""
-            insert into attempts (uid, chid, code) values (?, ?, ?)
-            """, [uid, chid, code])
-        cfg.attempt = code
+        if arg.isdigit():
+            try:
+                arg = self.result[int(arg)]['name']
+            except IndexError:
+                print(f"Sorry, challenge number {arg} not found.")
+                return
+        if arg == '--local':
+            print('starting local challenge.')
+        else:
+            match = [c for c in self.result if c['name'] == arg]
+            if not match:
+                print(f"Sorry, challenge '{arg}' not found.")
+                return
+            c = match[0]
+            sid = db.get_server_id(self.client.url)
+            db.commit("""insert or ignore into challenges
+                (sid, name, title) values (?, ?, ?)
+                """, [sid, c['name'], c['title']])
+            chid = db.query('select id from challenges where name=?', [c['name']])[0]['id']
+            # now we have arg = a valid challenge name on the server,
+            # so we have to initialize the attempt on both the remote
+            # and local databases.
+            code = self.client.attempt(arg)
+            uid = who['id']
+            db.commit("""
+                insert into attempts (uid, chid, code) values (?, ?, ?)
+                """, [uid, chid, code])
+            cfg.attempt = code
         with open('.tanco', 'w') as f:
             f.write(cfg.to_json())
         print('Project initialized.')

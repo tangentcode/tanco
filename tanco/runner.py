@@ -46,11 +46,7 @@ first feature.
 
 
 def load_config() -> Config:
-    res = Config()
-    res.uid = TancoClient().whoami()['id']
-    res.input_path = os.environ.get('INPUT_PATH', '')
-    res.skip_lines = int(os.environ.get('SKIP_LINES', '0'))
-    res.test_plan = os.environ.get('TEST_PLAN')
+    kw = {'uid': TancoClient().whoami()['id']}
     if os.path.exists('.tanco'):
         try:
             data = json.load(open('.tanco'))
@@ -64,10 +60,12 @@ def load_config() -> Config:
         if 'args' not in target:
             print('`targets/main` must specify a list of program arguments.')
             sys.exit()
-        res.attempt = data.get('attempt')
-        res.program_args = target['args']  # TODO: check that it's actually a list
-        res.use_shell = target.get('shell', False)  # TODO: check that it's actually a bool
-    return res
+        for slot in Config.__dataclass_fields__.keys():
+            if slot in data:
+                kw[slot] = data[slot]
+        kw['program_args'] = target['args']  # TODO: check that it's actually a list
+        kw['use_shell'] = target.get('shell', False)
+    return Config(**kw)
 
 
 class NoTestPlanError(Exception):
@@ -189,10 +187,11 @@ def run_tests(cfg: Config):
             print()
             print('This may be a good time to commit your changes,')
             print('or spend some time improving your code.')
-            print()
-            print("When you're ready, run `tanco next` to start work on the next feature.")
-            print()
-            TancoClient().send_pass(cfg.attempt)
+            if cfg.attempt:
+                print()
+                print("When you're ready, run `tanco next` to start work on the next feature.")
+                print()
+                TancoClient().send_pass(cfg)
     except (subprocess.TimeoutExpired, TestFailure) as e:
         print()
         print('%d of %d tests passed.' % (num_passed, len(tests)))
@@ -269,7 +268,7 @@ def fail(cfg: Config, msg: list[str], tn: str | None = None, tr: m.TestResult | 
     if tn and tr and (tn != TANCO_CHECK):
         assert tr.kind == ResultKind.Fail, 'Expected a failed test.'
         c = TancoClient()
-        c.send_fail(cfg.attempt, tn, tr)
+        c.send_fail(cfg, tn, tr)
     raise StopTesting
 
 

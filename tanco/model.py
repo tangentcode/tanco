@@ -1,5 +1,6 @@
 import difflib
 import json
+import os
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -161,15 +162,25 @@ class Config:
     skip_lines: int = 0
     attempt: str = ''
 
+    def __post_init__(self):
+        if not self.input_path:
+            self.input_path = os.environ.get('INPUT_PATH', '')
+        if not self.skip_lines:
+            self.skip_lines = int(os.environ.get('SKIP_LINES', '0'))
+        if not self.test_plan:
+            self.test_plan = os.environ.get('TEST_PLAN')
+
     @staticmethod
     def default_target():
         return DEFAULT_TARGET
 
     def to_json(self):
         data = {
-            'attempt': self.attempt,
             'targets': {
                 'main': {
                     'args': self.program_args,
                     'shell': self.use_shell}}}
+        for key in ['input_path', 'test_plan', 'skip_lines']:
+            if getattr(self, key):
+                data[key] = getattr(self, key)
         return json.dumps(data, indent=2)
