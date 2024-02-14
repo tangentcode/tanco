@@ -193,6 +193,7 @@ def run_tests(cfg: Config):
                 print()
                 TancoClient().send_pass(cfg)
     except (subprocess.TimeoutExpired, TestFailure) as e:
+        # TODO: is this even reachable??
         print()
         print('%d of %d tests passed.' % (num_passed, len(tests)))
         if isinstance(e, subprocess.TimeoutExpired):
@@ -261,8 +262,11 @@ def error(cfg: Config, msg: list[str]):
 
 
 def fail(cfg: Config, msg: list[str], tn: str | None = None, tr: m.TestResult | None = None):
+    print("\n")
     if tn == TANCO_CHECK:
         print('`tanco check` failed.')
+    else:
+        print('Test [%s] failed.' % tn)
     for line in msg:
         print(line)
     if tn and tr and (tn != TANCO_CHECK):
