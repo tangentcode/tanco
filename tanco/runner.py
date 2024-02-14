@@ -46,7 +46,7 @@ first feature.
 
 
 def load_config() -> Config:
-    kw = {'uid': TancoClient().whoami()['id']}
+    kw = {'uid': who['id'] if (who:=TancoClient().whoami()) else None}
     if os.path.exists('.tanco'):
         try:
             data = json.load(open('.tanco'))
