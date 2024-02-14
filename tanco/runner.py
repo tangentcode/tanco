@@ -170,12 +170,13 @@ def get_challenge(cfg: Config) -> Challenge:
         raise NoTestPlanError
 
 
-def run_tests(cfg: Config):
+def run_tests(cfg: Config, names=None):
     num_passed = 0
     challenge = get_challenge(cfg)
     tests = challenge.tests
     try:
         for i, test in enumerate(tests):
+            if names and test.name not in names: continue
             program = spawn(cfg)
             run_test(cfg, program, test)
             # either it passed or threw exception
@@ -289,10 +290,10 @@ def handle_unexpected_error(cfg: Config):
                '  https://github.com/tangentcode/tanco/issues'])
 
 
-def main(argv: list[str]):
-    cfg = get_custom_cfg(argv)
+def main(names: list[str]):
+    cfg = load_config()
     try:
-        run_tests(cfg)
+        run_tests(cfg, names)
     except NoTestPlanError:
         error(cfg, ['No challenge selected.'
                     'Use `tanco init` or set TEST_PLAN environment variable.'])

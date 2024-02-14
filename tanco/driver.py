@@ -358,7 +358,7 @@ class TancoDriver(cmdlib.Cmd):
     @staticmethod
     def do_test(arg):
         """Run the tests."""
-        runner.main(['tanco']+[x for x in arg.split(' ') if x != ''])
+        runner.main([x for x in arg.split(' ') if x != ''])
 
     @staticmethod
     def do_q(_arg):
