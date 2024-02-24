@@ -121,7 +121,8 @@ def htmx_fragment(f0):
     async def f(*a, **kw):
         body = (await f0(*a, **kw)) if inspect.iscoroutinefunction(f0) else f0(*a, **kw)
         qr = quart.request
-        if qr.headers.get('HX-Request'):
+        _fmt = kw.pop('_fmt') if '_fmt' in kw else ''
+        if qr.headers.get('HX-Request') or _fmt=='htm':
             return body
         else:
             return await quart.render_template('index.html', body=body)
@@ -134,14 +135,21 @@ def platonic(route, template, hx=True):
     depending on the presence of the string '.json' in the url"""
     def decorator(f0):
         async def fp(*a, **kw):
-            data = (await f0(*a, **kw)) if inspect.iscoroutinefunction(f0) else f0(*a, **kw)
-            if quart.request.path.endswith('.json'):
+            _fmt = kw.pop('_fmt') if '_fmt' in kw else ''
+            data = (await f0(*a, **kw)) if inspect.iscoroutinefunction(f0) \
+                    else f0(*a, **kw)
+            if _fmt == 'json':
                 return data
             else:
-                return await quart.render_template(template, data=data, url=quart.request.path)
+                return await quart.render_template(
+                    template, data=data, url=quart.request.path)
 
-        async def fj(*a, **kw):
-            return await fp(*a, **kw)
+        async def ff(*a, **kw):
+            match kw.get('_fmt', ''):
+                case 'json': return await fp(*a, **kw)
+                case 'htm': return await fhx(*a, **kw)
+                case _: return f"bad format type: '.{_fmt}'", 400
+
 
         @htmx_fragment
         async def fhx(*a, **kw):
@@ -149,9 +157,9 @@ def platonic(route, template, hx=True):
 
         fp.__name__ = f0.__name__
         fhx.__name__ = f0.__name__
-        fj.__name__ = f0.__name__ + '_json'
+        ff.__name__ = f0.__name__ + '_fmt'
         app.route(route)(fhx if hx else fp)
-        app.route(route + '.json')(fj)
+        app.route(route + '.<_fmt>')(ff)
         return fp
     return decorator
 
