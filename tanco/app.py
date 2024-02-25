@@ -26,7 +26,7 @@ observers: dict[str, list[asyncio.Queue]] = {}
 
 clients: dict[str, asyncio.Queue] = {}
 
-
+
 # == sessions =================================================
 
 
@@ -55,16 +55,18 @@ class PleaseLogin(Exception):
 def require_uid(f0):
     """supplies the uid from the request, or raises PleaseLogin"""
     async def f(*a, **kw):
-        # uid can come from cookie or jwt
-        skey = quart.request.cookies.get('sess', '')
-        if skey:
+        jwt = None # uid can come from cookie or jwt
+        if skey := quart.request.cookies.get('sess', ''):
             uid = (get_session(skey) or {}).get('uid')
+        elif jwt := quart.request.cookies.get('jwt', ''):
+            pass
         else:
             jsn = await quart.request.json
             if not jsn:
                 raise PleaseLogin
             if not (jwt := jsn.get('jwt')):
                 raise LookupError('no jwt given')
+        if jwt:
             r = db.query('select uid from tokens where jwt=?', [jwt])
             if not r: raise LookupError('unrecognized jwt')
             uid = r[0]['uid']
@@ -80,7 +82,7 @@ async def handle_please_login(_e):
     html = await quart.render_template('please_login.html')
     return html   # htmx didn't show content when status 401
 
-
+
 # == websocket notifications ==================================
 
 async def notify(code, data, wrap=True):
@@ -112,6 +114,7 @@ async def notify_state(code, state, focus):
 JWT_OBJ = jwtlib.JWT()
 JWT_KEY = jwtlib.jwk_from_pem(open('tanco_auth_key.pem', 'rb').read())
 
+
 # == platonic apps ============================================
 # mini web framework to wrap htmx fragments in a layout
 # and also allow fetching raw json with .json suffix
@@ -163,6 +166,7 @@ def platonic(route, template, hx=True):
         return fp
     return decorator
 
+
 # -------------------------------------------------------------
 
 
@@ -193,6 +197,7 @@ async def me(uid):
     return data
 
 
+
 @platonic('/c', 'challenges.html')
 def list_challenges():
     return db.query("""
@@ -227,7 +232,7 @@ async def attempt_challenge(name, uid):
         """, [uid, chid, code])
     return {'aid': code}
 
-
+
 @platonic('/a/<code>', 'attempt.html')
 @require_uid
 async def show_attempt(code, uid):
@@ -262,7 +267,7 @@ async def attempt_live(code):
     except asyncio.CancelledError:
         observers[code].remove(q)
 
-
+
 @app.websocket('/a/<code>/share')
 # TODO: @require_uid (raises RuntimeError: Not within a request context)
 async def attempt_share(code):
@@ -285,7 +290,7 @@ async def attempt_share(code):
         clients.pop(code)
         await notify_client_state(code)
 
-
+
 @app.route('/a/<code>/shell', methods=['POST'])
 @require_uid
 async def attempt_shell(code, uid):
@@ -309,7 +314,7 @@ async def attempt_cmd(code, uid, cmd):
         return 'no client connected', 400
     return 'ok'
 
-
+
 @platonic('/a/<code>/t/<name>', 'test.html')
 @require_uid
 async def show_test(**kw):
@@ -317,7 +322,7 @@ async def show_test(**kw):
     data = db.query("""
         select t.name, t.head, t.body, t.ilines,
            t.olines
-        from attempts a, tests t        
+        from attempts a, tests t
         where a.chid = t.chid and a.uid = (:uid)
           and a.code = (:code) and t.name=(:name)
         """, kw)[0]
@@ -335,7 +340,7 @@ async def next_tests_for_attempt(code, uid):
         row['olines'] = None
     return rows
 
-
+
 @app.route('/a/<code>/pass', methods=['POST'])
 @require_uid
 async def send_attempt_pass(code, uid):
@@ -366,7 +371,7 @@ async def send_attempt_fail(code, uid):
     await notify(code, html)
     return ['ok']
 
-
+
 @app.route('/a/<code>/check/<test_name>', methods=['POST'])
 @require_uid
 async def check_test_for_attempt(code, test_name, uid):
@@ -400,7 +405,7 @@ async def check_test_for_attempt(code, test_name, uid):
             await o.put(html)
     return r.to_data()
 
-
+
 # == Website Authentication ===================================
 
 @app.route('/whoami', methods=['GET'])
@@ -426,7 +431,7 @@ async def post_login_success():
     res.set_cookie('sess', key)
     return res
 
-
+
 # == Authentication for Command Line Client ===================
 
 @app.route('/auth/login', methods=['GET'])
@@ -450,7 +455,7 @@ def post_auth_pre():
     queues[pre] = asyncio.Queue()
     return {'token': pre}
 
-
+
 @app.route('/auth/jwt', methods=['GET'])
 def get_auth_jwt():
     return """
@@ -472,7 +477,7 @@ async def post_auth_jwt():
     print(f'jwt for pre[{pre}]:', jwt)
     return {'token': jwt}
 
-
+
 def decode_access_token(acc0):
     """returns uid, token_data"""
     # TODO: validate acc against auth provider (firebase)
@@ -486,7 +491,7 @@ def decode_access_token(acc0):
     token_data = {'authid': authid, 'username': username}
     return uid, token_data
 
-
+
 @app.route('/auth/success', methods=['POST'])
 async def post_auth_success():
     frm = await quart.request.form
