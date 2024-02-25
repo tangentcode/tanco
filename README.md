@@ -84,5 +84,5 @@ QUART_APP=tanco.app:app quart run # --reload
 Or (on platforms that support it) use hypercorn:
 
 ```bash
-hypercorn tanco.app:app # --reload 
+hypercorn tanco.app:app # --reload
 ```
