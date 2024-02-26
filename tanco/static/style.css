@@ -67,3 +67,9 @@ a:hover { color: #0162c2ff; background: #f3f0e5; }
 .diff pre { display: block;  margin: 0; padding: 0; }
 .diff del { color: #000; background: #fdd; }
 .diff ins { color: #000; background: #dfd; }
+
+/** flexbox with narrow progress in left column, wide test detail in right column */
+#attempt { display: flex; }
+#progress { flex: 1; max-width: 150px; }
+#test-detail { flex: 3; }
+#state { width: calc(100% - 230px); }

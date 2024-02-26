@@ -37,12 +37,6 @@
 
 
 <div id="attempt">
-  <style>
-    /** flexbox with narrow progress in left column, wide test detail in right column */
-    #attempt { display: flex; }
-    #progress { flex: 1; max-width: 150px; }
-    #test-detail { flex: 3; }
-  </style>
   <!-- list progress (passed tests) -->
   <div id="progress">
     <h3>passed tests</h3>
@@ -53,7 +47,7 @@
     </div>
   </div>
 
-  <div style="width: calc(100% - 230px);">
+  <div id="state">
     {% include "state.html" %}
     <div id="buttons" hx-swap="none">
       <button disabled class="has-tooltip" hx-post="/a/{{ data.code }}/cmd/test">test
