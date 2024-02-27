@@ -148,7 +148,7 @@ def local_check_output(cfg: m.Config, actual: list[str], test: TestDescription):
             # a regression! (test failed and have the rule,
             # so we have to tell the server)
             assert local_res.error is not None
-            fail(cfg, local_res.error.error_lines(), test.name, local_res)
+            fail(cfg, local_res.error.error_lines(), test, local_res)
         case ResultKind.AskServer:
             client = TancoClient()
             remote_res = client.check_output(cfg.attempt, test.name, actual)
@@ -208,7 +208,7 @@ def run_tests(cfg: Config, names=None):
             for line in test.ilines:
                 print(line)
             print()
-            fail(cfg, e.error_lines(), test.name)
+            fail(cfg, e.error_lines(), test)
 
 
 def find_target(cfg: Config, argv: list[str]) -> Config:
@@ -262,18 +262,27 @@ def error(cfg: Config, msg: list[str]):
     fail(cfg, msg)
 
 
-def fail(cfg: Config, msg: list[str], tn: str | None = None, tr: m.TestResult | None = None):
+def fail(cfg: Config, msg: list[str], t: m.TestDescription | None = None, tr: m.TestResult | None = None):
     print("\n")
-    if tn == TANCO_CHECK:
+    if t.name == TANCO_CHECK:
         print('`tanco check` failed.')
     else:
-        print('Test [%s] failed.' % tn)
+        print('Test [%s] failed.' % t.name)
+        if t.head:
+            print('###', t.head)
+        if t.body:
+            print(t.body)
+        print()
+        print(' --- input given ------')
+        for line in t.ilines:
+            print(line)
+        print()
     for line in msg:
         print(line)
-    if tn and tr and (tn != TANCO_CHECK):
+    if t.name and tr and (t.name != TANCO_CHECK):
         assert tr.kind == ResultKind.Fail, 'Expected a failed test.'
         c = TancoClient()
-        c.send_fail(cfg, tn, tr)
+        c.send_fail(cfg, t.name, tr)
     raise StopTesting
 
 
