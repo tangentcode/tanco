@@ -66,7 +66,7 @@ class TestReaderStateMachine:
 
     def on_line(self, line):
         self.lineno += 1
-        match = [row[2:] for row in self.transitions 
+        match = [row[2:] for row in self.transitions
                  if row[0] == self.state and line.startswith(row[1])]
         if match:  # match :: [( to_state, method )] of len 1
             self.state = match[0][0]
@@ -84,12 +84,15 @@ class TestReaderStateMachine:
             c.server = line.split(' ', 1)[1].strip()
         elif line.startswith('#+name:'):
             c.name = line.split(' ', 1)[1].strip()
-        else:
-            print(f'unexpected line {line!r} on line {self.lineno}')
-            print('expect #+title:, #+server:, #+name: lines at start of file')
-            exit()
-        if c.title and c.server and c.name:
+            # In local mode, we can transition to state 0 as soon as we see a test
             self.state = 0
+        # Allow other lines in local mode - they might be comments or other org content
+        elif not line.strip():  # Empty lines are fine
+            pass
+        elif line.startswith('#'):  # Other org directives are fine
+            pass
+        else:  # Regular text is fine too
+            pass
 
     def on_test_name(self, line):
         self.next_name = line.split(':')[1].strip()
@@ -99,18 +102,23 @@ class TestReaderStateMachine:
         self.test_names.append(self.next_name)
 
     def on_begin_test(self, _line):
-        assert self.next_name != self.prev_name, (
-            'missing or duplicate name for test on line {0}'
-            .format(self.lineno))
-        self.tests.append(OldTestDescription(self.next_name, []))
-        self.focus = self.tests[-1].lines
-        self.prev_name = self.next_name
+        # Only start collecting test lines if we have a valid name
+        if self.next_name and self.next_name != self.prev_name:
+            self.tests.append(OldTestDescription(self.next_name, []))
+            self.focus = self.tests[-1].lines
+            self.prev_name = self.next_name
+        else:
+            # If no name or duplicate name, ignore this block
+            self.focus = None
 
     def on_test_code(self, line):
-        self.focus.append(line)
+        # Only collect lines if we're in a valid test block
+        if self.focus is not None:
+            self.focus.append(line)
 
     def on_end_test(self, line):
-        pass
+        # Reset focus after ending a test block
+        self.focus = None
 
     # -- main public interface ----------------------------------
 

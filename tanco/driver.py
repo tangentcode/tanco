@@ -2,6 +2,7 @@
 """
 command-line driver for tanco client.
 """
+import argparse
 import asyncio
 import cmd as cmdlib
 import os
@@ -10,6 +11,7 @@ import sqlite3
 import subprocess
 import sys
 import webbrowser
+import pprint
 
 import jwt as jwtlib
 import websockets as w
@@ -369,6 +371,63 @@ class TancoDriver(cmdlib.Cmd):
     def do_EOF(_arg):
         """Exit when ^D pressed or EOF reached"""
         return True
+
+    def do_run(self, arg):
+        """Run tests from an org file or from the database
+        Usage: run [-t / --tests ORG_FILE] [-v / --verbose] [PROGRAM_ARGS...]
+        """
+        parser = argparse.ArgumentParser(prog='run', description='Run tanco tests')
+        parser.add_argument('-t', '--tests', help='Path to org file containing tests')
+        parser.add_argument('-v', '--verbose', action='store_true', help='Print configuration before running tests')
+
+        # Parse known args first to get tanco args
+        try:
+            args, program_args = parser.parse_known_args(shlex.split(arg) if arg else [])
+        except SystemExit: # Prevent argparse from exiting the Cmd loop
+             return
+
+        cfg = runner.load_config()
+
+        # Determine program args and shell usage
+        parsed_program_args = []
+        explicit_shell = False
+        if args.tests:
+            cfg.test_path = args.tests
+            cfg.attempt = None  # Don't use database when running from org file
+            parsed_program_args = program_args # Use remaining args after --tests
+        elif program_args:
+             # If not --tests, but extra args are given, assume they override .tanco config
+             parsed_program_args = program_args
+        else:
+            # Use args from .tanco or default if no override
+            parsed_program_args = cfg.program_args
+            explicit_shell = cfg.use_shell # Respect shell setting from .tanco
+
+        # Check for '-c' flag and update cfg for verbose output and potentially runner
+        if parsed_program_args and parsed_program_args[0] == '-c':
+            cfg.use_shell = True # Set shell=True for verbose output
+            # The actual args list passed to spawn still includes '-c' for spawn to process
+            cfg.program_args = parsed_program_args
+        else:
+            cfg.program_args = parsed_program_args
+            cfg.use_shell = explicit_shell # Use value from .tanco or default
+
+        # Dump config if verbose flag is set
+        if args.verbose:
+            print("--- Tanco Configuration ---")
+            pprint.pprint(cfg)
+            print("---------------------------")
+
+        try:
+            # Pass the possibly modified cfg to run_tests
+            runner.run_tests(cfg)
+        except runner.NoTestPlanError:
+            print("No tests specified. Use --tests PATH or ensure you're in a tanco project.")
+        except runner.StopTesting:
+            pass # Normal exit after test failure
+        except Exception:
+            # handle_unexpected_error already prints traceback
+            runner.handle_unexpected_error(cfg)
 
 
 def show_help():

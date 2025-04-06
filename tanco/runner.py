@@ -47,6 +47,8 @@ first feature.
 
 def load_config() -> Config:
     kw = {'uid': who['id'] if (who:=TancoClient().whoami()) else None}
+
+    # Load from .tanco file if it exists
     if os.path.exists('.tanco'):
         try:
             data = json.load(open('.tanco'))
@@ -55,7 +57,7 @@ def load_config() -> Config:
             print('Error reading .tanco file:', e)
             sys.exit()
         except KeyError:
-            print('`targets/main` found in the .tanco file.')
+            print('`targets/main` not found in the .tanco file.') # Corrected error message
             sys.exit()
         if 'args' not in target:
             print('`targets/main` must specify a list of program arguments.')
@@ -65,6 +67,17 @@ def load_config() -> Config:
                 kw[slot] = data[slot]
         kw['program_args'] = target['args']  # TODO: check that it's actually a list
         kw['use_shell'] = target.get('shell', False)
+        # Allow .tanco to override input_path from env
+        if 'input_path' in target:
+             kw['input_path'] = target['input_path']
+
+    # Load from environment variables (can override .tanco or provide defaults)
+    if 'INPUT_PATH' in os.environ and 'input_path' not in kw:
+        kw['input_path'] = os.environ['INPUT_PATH']
+    if 'TEST_PLAN' in os.environ and 'test_plan' not in kw:
+         kw['test_plan'] = os.environ['TEST_PLAN']
+    # Add other environment variable checks here if needed
+
     return Config(**kw)
 
 
@@ -80,26 +93,82 @@ def spawn(cfg: m.Config | None = None):
     if not cfg:
         cfg = load_config()
     program_args, use_shell = cfg.program_args, cfg.use_shell
+    cmd_for_popen = None
+    prog_name_for_error = "<unknown>" # Default for error messages
+
+    if program_args and program_args[0] == '-c':
+        use_shell = True
+        cmd_list = program_args[1:]
+        if not cmd_list: # Handle case like "tanco run --tests f.org -c"
+             fail(cfg, ["Error: '-c' flag used with no command specified."])
+        if os.name == 'nt':
+            # For Windows shell, join args and replace slashes
+            cmd_string = ' '.join(cmd_list)
+            cmd_for_popen = cmd_string.replace('/', '\\')
+            prog_name_for_error = cmd_for_popen # Use the processed command string for errors
+        else:
+            cmd_for_popen = cmd_list # List for POSIX + shell=True
+            prog_name_for_error = cmd_list[0] # Use the command itself for errors
+    else:
+        # Not a '-c' command
+        cmd_list = list(program_args)
+        if not cmd_list:
+             fail(cfg, ["Error: No program arguments specified."])
+        prog_name_for_error = cmd_list[0]
+        # Only resolve paths and check extensions if not using shell explicitly set in config
+        if not use_shell and os.name == 'nt':
+            # Ensure path is absolute
+            if not os.path.isabs(cmd_list[0]):
+                cmd_list[0] = os.path.abspath(cmd_list[0])
+                prog_name_for_error = cmd_list[0] # Update error name
+
+            # Check existence, trying PATHEXT if necessary
+            if not os.path.exists(cmd_list[0]):
+                found_executable = False
+                pathext = os.environ.get('PATHEXT', '.COM;.EXE;.BAT;.CMD').split(';')
+                # Ensure extensions start with a dot and handle empty strings
+                extensions_to_try = [ext.lower() if ext.startswith('.') else '.' + ext.lower()
+                                     for ext in pathext if ext] + [''] # Add empty string to check original
+
+                base_path = cmd_list[0]
+                for ext in extensions_to_try:
+                    potential_path = base_path + ext
+                    if os.path.exists(potential_path):
+                        cmd_list[0] = potential_path
+                        prog_name_for_error = potential_path
+                        found_executable = True
+                        break # Found it
+
+                if not found_executable:
+                     fail(cfg, [f"Couldn't find program: {base_path} (with extensions)",
+                               'Make sure you have the right path and filename.'])
+
+        cmd_for_popen = cmd_list # List for shell=False or POSIX shell=True without -c
+
     try:
-        return subprocess.Popen(program_args,
-                                shell=use_shell,
-                                universal_newlines=True,
-                                stdin=subprocess.PIPE,
-                                stdout=subprocess.PIPE)
+        return subprocess.Popen(cmd_for_popen,
+                              shell=use_shell,
+                              universal_newlines=True,
+                              stdin=subprocess.PIPE,
+                              stdout=subprocess.PIPE)
     except OSError as e:
         if e.errno == errno.ENOENT:
             fail(cfg, [str(e),
-                       "Couldn't find program: %s" % program_args[0],
-                       'Make sure you have the right path.'])
+                      f"Couldn't find program or command: {prog_name_for_error}",
+                      'Make sure it is installed and in your PATH or the path is correct.'])
         elif e.errno in [errno.EPERM, errno.EACCES]:
             fail(cfg, [str(e),
-                       "Couldn't run %r due to a permission error." % program_args[0],
-                       'Make sure your program is marked as an executable.'])
+                      f"Couldn't run {prog_name_for_error!r} due to a permission error.",
+                      'Make sure the file/script has execute permissions.'])
+        elif getattr(e, 'winerror', 0) == 193: # Specific check for WinError 193
+             fail(cfg, [str(e),
+                        f"Command {prog_name_for_error!r} is not a valid executable.",
+                        "Make sure you are running scripts via their interpreter (e.g., 'python script.py')",
+                        "or using the shell ('-c' flag) if necessary."])
         elif e.errno == errno.EPIPE:
             fail(cfg, [str(e),
-                       '%r quit before reading any input.' % program_args[0],
-                       'Make sure you are reading commands from standard input,',
-                       'not trying to take arguments from the command line.'])
+                      f'{prog_name_for_error!r} quit before reading any input.',
+                      'Make sure it is reading commands from standard input.'])
         else:
             handle_unexpected_error(cfg)
 
@@ -150,24 +219,30 @@ def local_check_output(cfg: m.Config, actual: list[str], test: TestDescription):
             assert local_res.error is not None
             fail(cfg, local_res.error.error_lines(), test, local_res)
         case ResultKind.AskServer:
-            client = TancoClient()
-            remote_res = client.check_output(cfg.attempt, test.name, actual)
-            match remote_res.kind:
-                case ResultKind.Pass:
-                    save_new_rule(cfg.attempt, test.name, remote_res.rule)
-                case ResultKind.Fail:
-                    raise remote_res.error
-                case ResultKind.AskServer:
-                    raise RecursionError('Server validation loop')
+            if cfg.test_path:  # We're running from org file
+                # When running from org file, treat missing output rules as failure
+                fail(cfg, ["Test failed - output didn't match expected result"], test)
+            else:
+                client = TancoClient()
+                remote_res = client.check_output(cfg.attempt, test.name, actual)
+                match remote_res.kind:
+                    case ResultKind.Pass:
+                        save_new_rule(cfg.attempt, test.name, remote_res.rule)
+                    case ResultKind.Fail:
+                        raise remote_res.error
+                    case ResultKind.AskServer:
+                        raise RecursionError('Server validation loop')
 
 
 def get_challenge(cfg: Config) -> Challenge:
-    if cfg.test_plan:
+    if cfg.test_path:
+        return orgtest.read_challenge(cfg.test_path)
+    elif cfg.test_plan:
         return orgtest.read_challenge(cfg.test_plan)
     elif cfg.attempt:
         return db.challenge_from_attempt(cfg.attempt)
     else:
-        raise NoTestPlanError
+        raise NoTestPlanError("No tests specified. Use --tests PATH or ensure you're in a tanco project.")
 
 
 def run_tests(cfg: Config, names=None):
@@ -180,19 +255,22 @@ def run_tests(cfg: Config, names=None):
             program = spawn(cfg)
             run_test(cfg, program, test)
             # either it passed or threw exception
-            print('.', end='')
+            print('.', end='', flush=True)
             num_passed += 1
         else:
             print()
             print('All %d tests passed.' % num_passed)
             print()
-            print('This may be a good time to commit your changes,')
-            print('or spend some time improving your code.')
-            if cfg.attempt:
-                print()
-                print("When you're ready, run `tanco next` to start work on the next feature.")
-                print()
-                TancoClient().send_pass(cfg)
+            if cfg.test_path:
+                print('All tests in %s passed.' % cfg.test_path)
+            else:
+                print('This may be a good time to commit your changes,')
+                print('or spend some time improving your code.')
+                if cfg.attempt:
+                    print()
+                    print("When you're ready, run `tanco next` to start work on the next feature.")
+                    print()
+                    TancoClient().send_pass(cfg)
     except (subprocess.TimeoutExpired, TestFailure) as e:
         # TODO: is this even reachable??
         print()
@@ -262,28 +340,37 @@ def error(cfg: Config, msg: list[str]):
     fail(cfg, msg)
 
 
-def fail(cfg: Config, msg: list[str], t: m.TestDescription | None = None, tr: m.TestResult | None = None):
+def fail(cfg: Config, lines: list[str], test: m.TestDescription | None = None, tr: m.TestResult | None = None):
     print("\n")
-    if t.name == TANCO_CHECK:
+    if test and test.name == TANCO_CHECK:
         print('`tanco check` failed.')
-    else:
-        print('Test [%s] failed.' % t.name)
-        if t.head:
-            print('###', t.head)
-        if t.body:
-            print(t.body)
+    elif test:
+        print('Test [%s] failed.' % test.name)
+        if test.head:
+            print('###', test.head)
+        if test.body:
+            print(test.body)
         print()
         print(' --- input given ------')
-        for line in t.ilines:
+        for line in test.ilines:
             print(line)
         print()
-    for line in msg:
+    # Always print the specific error lines
+    for line in lines:
         print(line)
-    if t.name and tr and (t.name != TANCO_CHECK):
-        assert tr.kind == ResultKind.Fail, 'Expected a failed test.'
-        c = TancoClient()
-        c.send_fail(cfg, t.name, tr)
-    raise StopTesting
+
+    # Server interaction logic (only if not in local --tests mode)
+    if not cfg.test_path:
+        if test and test.name and tr and (test.name != TANCO_CHECK):
+            assert tr.kind == ResultKind.Fail, 'Expected a failed test result object.'
+            try:
+                c = TancoClient()
+                c.send_fail(cfg, test.name, tr)
+            except Exception as client_e:
+                print(f"\nError reporting failure to server: {client_e}")
+
+    # Stop testing after failure
+    raise StopTesting() # Raise consistently
 
 
 def handle_unexpected_error(cfg: Config):

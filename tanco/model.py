@@ -161,6 +161,8 @@ class Config:
     # off the header, but doing so turns off all prints!)
     skip_lines: int = 0
     attempt: str = ''
+    # path to org file when using --tests
+    test_path: str | None = None
 
     def __post_init__(self):
         if not self.input_path:
