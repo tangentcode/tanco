@@ -10,10 +10,8 @@ dependencies = [
   "websockets ~= 12.0"]
 maintainers = [
   { name = "Michal J Wallace", email = "michal.wallace@gmail.com" }]
-classifiers = [
-  "License :: OSI Approved :: MIT License"]
 readme = "README.md"
-license = {text="MIT"}
+license = "MIT"
 requires-python = ">=3.10"
 
 [project.urls]
