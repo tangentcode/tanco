@@ -14,16 +14,29 @@ https://tangentcode.com/setup
 
 ## Installation
 
-```bash
-# eventually:
-# pip install tanco
+There are two main ways to install Tanco:
 
-# but for now, this is still very alpha stage, so:
+**1. From PyPI (Recommended for users):**
+
+If you just want to use Tanco to follow a course or run tests, you can install it directly from the Python Package Index (PyPI):
+
+```bash
+pip install tanco
+```
+
+You can find the package details on [PyPI](https://pypi.org/project/tanco).
+
+**2. Editable Install (Recommended for developers):**
+
+If you plan to contribute to Tanco development or want the latest changes, clone the repository and install it in editable mode:
+
+```bash
 git clone https://github.com/tangentcode/tanco.git
 cd tanco
 pip install -e .
 ```
 
+This command links the installed package to your local source code, so any changes you make are immediately effective.
 
 ## Using the Client
 
@@ -85,4 +98,38 @@ Or (on platforms that support it) use hypercorn:
 
 ```bash
 hypercorn tanco.app:app # --reload
+```
+
+## Local Usage
+
+Tanco is primarily used via its command-line interface.
+
+**Running Local Tests from Org Files:**
+
+Tanco can now run tests defined directly within an `.org` file, independent of the server. This is useful for local development, testing, and creating new challenges.
+
+Use the `run` command with the `--tests` flag:
+
+```bash
+tanco run --tests path/to/your/tests.org [program_and_args...]
+```
+
+*   `--tests path/to/your/tests.org`: Specifies the org file containing the test definitions (using `#+name:`, `#+begin_src`, etc.).
+*   `[program_and_args...]`: The command and arguments needed to execute the program being tested.
+    *   If your program needs to be run via the shell (e.g., using interpreters like `node` or `python`), prefix the command with `-c`. For example:
+        ```bash
+        tanco run --tests tests.org -c 'node your_script.js'
+        tanco run --tests tests.org -c 'python your_script.py arg1'
+        ```
+    *   If your program is a direct executable (like `myprogram.exe` on Windows or `./myprogram` on Linux), just provide the path and arguments:
+        ```bash
+        tanco run --tests tests.org path/to/your_program arg1 arg2
+        ```
+
+**Verbose Output:**
+
+You can add the `-v` or `--verbose` flag to the `run` command to print the configuration Tanco is using before executing the tests. This is helpful for debugging paths and arguments:
+
+```bash
+tanco run -v --tests tests.org ...
 ```
