@@ -86,6 +86,8 @@ class TestReaderStateMachine:
             c.name = line.split(' ', 1)[1].strip()
             # In local mode, we can transition to state 0 as soon as we see a test
             self.state = 0
+            # Also call on_test_name to set self.next_name for the first test
+            self.on_test_name(line)
         # Allow other lines in local mode - they might be comments or other org content
         elif not line.strip():  # Empty lines are fine
             pass
