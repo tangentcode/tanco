@@ -177,11 +177,11 @@ class Config:
         return DEFAULT_TARGET
 
     def to_json(self):
-        data = {
-            'targets': {
-                'main': {
-                    'args': self.program_args,
-                    'shell': self.use_shell}}}
+        target = {'args': self.program_args}
+        # Only include 'shell' if it's True (False is the default)
+        if self.use_shell:
+            target['shell'] = True
+        data = {'targets': {'main': target}}
         for key in ['input_path', 'test_plan', 'skip_lines']:
             if getattr(self, key):
                 data[key] = getattr(self, key)

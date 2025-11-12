@@ -5,6 +5,7 @@ Test-running logic for validating tanco tests.
 import errno
 import json
 import os
+import shutil
 import subprocess
 import sys
 import traceback
@@ -107,7 +108,8 @@ def spawn(cfg: m.Config | None = None):
             cmd_for_popen = cmd_string.replace('/', '\\')
             prog_name_for_error = cmd_for_popen # Use the processed command string for errors
         else:
-            cmd_for_popen = cmd_list # List for POSIX + shell=True
+            # For POSIX with shell=True, must pass a string, not a list
+            cmd_for_popen = ' '.join(cmd_list)
             prog_name_for_error = cmd_list[0] # Use the command itself for errors
     else:
         # Not a '-c' command
@@ -115,15 +117,29 @@ def spawn(cfg: m.Config | None = None):
         if not cmd_list:
              fail(cfg, ["Error: No program arguments specified."])
         prog_name_for_error = cmd_list[0]
-        # Only resolve paths and check extensions if not using shell explicitly set in config
-        if not use_shell and os.name == 'nt':
-            # Ensure path is absolute
-            if not os.path.isabs(cmd_list[0]):
-                cmd_list[0] = os.path.abspath(cmd_list[0])
-                prog_name_for_error = cmd_list[0] # Update error name
 
-            # Check existence, trying PATHEXT if necessary
-            if not os.path.exists(cmd_list[0]):
+        # Resolve executables when not using shell (cross-platform)
+        if not use_shell:
+            # First, try to find the executable in PATH (for things like 'node', 'python', etc.)
+            if not os.path.isabs(cmd_list[0]) and not os.path.exists(cmd_list[0]):
+                which_result = shutil.which(cmd_list[0])
+                if which_result:
+                    cmd_list[0] = which_result
+                    prog_name_for_error = which_result
+                else:
+                    # Not in PATH, try as local path
+                    if os.name == 'nt':
+                        # On Windows, make it absolute for PATHEXT checking below
+                        cmd_list[0] = os.path.abspath(cmd_list[0])
+                        prog_name_for_error = cmd_list[0]
+                    # On POSIX, leave it as-is and let Popen handle it
+            elif not os.path.isabs(cmd_list[0]) and os.name == 'nt':
+                # Local file exists on Windows, make it absolute
+                cmd_list[0] = os.path.abspath(cmd_list[0])
+                prog_name_for_error = cmd_list[0]
+
+            # Windows-specific: Check existence with PATHEXT extensions
+            if os.name == 'nt' and not os.path.exists(cmd_list[0]):
                 found_executable = False
                 pathext = os.environ.get('PATHEXT', '.COM;.EXE;.BAT;.CMD').split(';')
                 # Ensure extensions start with a dot and handle empty strings
