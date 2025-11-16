@@ -108,6 +108,86 @@ class TancoDriver(cmdlib.Cmd):
             tx.commit()
             print(f'Challenge "{c.name}" imported with {len(c.tests)} tests.')
 
+    @staticmethod
+    def do_migrate(arg):
+        """Migrate an org file from v0.1 to v0.2 format"""
+        parser = argparse.ArgumentParser(prog='migrate', description='Migrate org file to v0.2 format')
+        parser.add_argument('--check', action='store_true', help='Preview changes without modifying file')
+        parser.add_argument('file', nargs='?', help='Org file to migrate')
+
+        try:
+            args = parser.parse_args(shlex.split(arg) if arg else [])
+        except SystemExit:
+            return
+
+        if not args.file:
+            print('Usage: migrate [--check] <file.org>')
+            return
+
+        if not os.path.exists(args.file):
+            print(f'Error: File "{args.file}" not found.')
+            return
+
+        # Read and analyze the file
+        with open(args.file) as f:
+            lines = f.readlines()
+
+        # Check if already v0.2
+        for line in lines:
+            if line.startswith('#+tanco-format:'):
+                version = line.split(':', 1)[1].strip()
+                if version == '0.2':
+                    print(f'{args.file} is already in v0.2 format.')
+                    return
+                break
+
+        # Perform migration
+        migrated_lines = _migrate_org_file(lines)
+
+        # Count changes
+        num_tests = sum(1 for line in migrated_lines if line.strip().startswith('** TEST '))
+        num_name_removed = sum(1 for i, line in enumerate(lines)
+                              if line.strip().startswith('#+name:') and
+                              any(i+j < len(lines) and lines[i+j].strip().startswith('#+begin_src')
+                                  for j in range(1, min(10, len(lines)-i))))
+        num_title_removed = sum(1 for line in lines if line.strip().startswith('= '))
+        num_desc_removed = sum(1 for line in lines if line.strip().startswith(': '))
+
+        # Show summary
+        print(f'{"Would migrate" if args.check else "Migrating"}: {args.file}')
+        print(f'Changes:')
+        print(f'  - Add #+tanco-format: 0.2 directive')
+        print(f'  - Migrate {num_tests} tests')
+        print(f'  - Remove {num_name_removed} #+name: directives')
+        print(f'  - Remove TODO/DONE from test headlines')
+        print(f'  - Remove {num_title_removed} = title lines')
+        print(f'  - Remove {num_desc_removed} : description lines')
+        print(f'  - Move description text to test bodies')
+        print()
+
+        if args.check:
+            # Show preview
+            print('Preview (first 50 lines):')
+            print('='*70)
+            for line in migrated_lines[:50]:
+                print(line, end='')
+            if len(migrated_lines) > 50:
+                print(f'\n... and {len(migrated_lines) - 50} more lines')
+            print('='*70)
+        else:
+            # Create backup
+            backup_path = args.file + '.bak'
+            with open(backup_path, 'w') as f:
+                f.writelines(lines)
+            print(f'Created backup: {backup_path}')
+
+            # Write migrated file
+            with open(args.file, 'w') as f:
+                f.writelines(migrated_lines)
+            print(f'Migration complete: {args.file}')
+            print()
+            print('Verify with: tanco run --tests ' + args.file)
+
     def do_challenges(self, _arg):
         """List challenges"""
         print(f'Listing challenges from {self.client.url}')
@@ -428,6 +508,138 @@ class TancoDriver(cmdlib.Cmd):
         except Exception:
             # handle_unexpected_error already prints traceback
             runner.handle_unexpected_error(cfg)
+
+
+def _migrate_org_file(lines):
+    """Migrate org file lines from v0.1 to v0.2 format."""
+    import re
+
+    migrated = []
+    i = 0
+    format_added = False
+
+    while i < len(lines):
+        line = lines[i]
+
+        # Add format directive after #+title: or #+server:
+        if not format_added and (line.startswith('#+title:') or line.startswith('#+server:')):
+            migrated.append(line)
+            i += 1
+            migrated.append('#+tanco-format: 0.2\n')
+            format_added = True
+            continue
+
+        # Handle top-level #+name: (challenge name, not test)
+        if not format_added and line.startswith('#+name:'):
+            # Check if next non-blank line is #+begin_src (would be a test)
+            is_test = False
+            for j in range(i+1, min(i+5, len(lines))):
+                if lines[j].startswith('#+begin_src'):
+                    is_test = True
+                    break
+                elif lines[j].strip() and not lines[j].strip() == '':
+                    break
+            if not is_test:
+                # This is challenge name
+                migrated.append('#+tanco-format: 0.2\n')
+                migrated.append(line)
+                format_added = True
+                i += 1
+                continue
+
+        if not format_added and i == 0:
+            migrated.append('#+tanco-format: 0.2\n')
+            format_added = True
+
+        # Check if this is a test headline by looking for #+name: nearby
+        if line.startswith('*'):
+            # Look ahead for #+name: within next 5 lines
+            test_name = None
+            for j in range(i+1, min(i+6, len(lines))):
+                if lines[j].strip().startswith('#+name:'):
+                    test_name = lines[j].strip().split(':', 1)[1].strip()
+                    break
+                elif lines[j].startswith('*'):
+                    break  # Hit next headline
+
+            if test_name:
+                # This is a test headline - migrate it
+                # Extract headline info
+                match = re.match(r'^(\*+)\s*(?:TODO|DONE)?\s*(.*)$', line)
+                stars = match.group(1) if match else '**'
+                headline_text = match.group(2).strip() if match and match.group(2) else ''
+
+                # Find #+begin_src and collect content
+                begin_idx = None
+                for j in range(i+1, min(i+15, len(lines))):
+                    if lines[j].startswith('#+begin_src'):
+                        begin_idx = j
+                        break
+
+                if begin_idx:
+                    # Collect test content
+                    title = None  # Title from = line
+                    desc_lines = []
+                    test_content = []
+
+                    end_idx = begin_idx + 1
+                    while end_idx < len(lines) and not lines[end_idx].startswith('#+end_src'):
+                        stripped = lines[end_idx].strip()
+                        if stripped.startswith('= '):
+                            title = stripped[2:]
+                        elif stripped.startswith(': '):
+                            desc_lines.append(stripped[2:])
+                        else:
+                            test_content.append(lines[end_idx])
+                        end_idx += 1
+
+                    # Determine final title
+                    # If no = line, use headline text as title
+                    # If both exist and differ, use = line but preserve headline as comment
+                    final_title = title if title else headline_text
+                    preserve_headline_comment = (title and headline_text and
+                                                 title != headline_text and
+                                                 headline_text != '')
+
+                    # Build migrated test
+                    if preserve_headline_comment:
+                        migrated.append(f'{stars} TEST {test_name} : {final_title}\n')
+                        migrated.append(f'# Original headline: {headline_text}\n')
+                    elif final_title:
+                        migrated.append(f'{stars} TEST {test_name} : {final_title}\n')
+                    else:
+                        migrated.append(f'{stars} TEST {test_name}\n')
+
+                    # Add blank line if there was one
+                    if i+1 < len(lines) and lines[i+1].strip() == '':
+                        migrated.append('\n')
+
+                    # Add #+begin_src
+                    migrated.append(lines[begin_idx])
+
+                    # Add test content (without = and : lines)
+                    for content_line in test_content:
+                        migrated.append(content_line)
+
+                    # Add #+end_src
+                    if end_idx < len(lines):
+                        migrated.append(lines[end_idx])
+
+                    # Add description as plain text
+                    if desc_lines:
+                        migrated.append('\n')
+                        for desc in desc_lines:
+                            migrated.append(desc + '\n')
+
+                    # Skip past this test
+                    i = end_idx + 1
+                    continue
+
+        # Not a test, keep line as-is
+        migrated.append(line)
+        i += 1
+
+    return migrated
 
 
 def show_help():
