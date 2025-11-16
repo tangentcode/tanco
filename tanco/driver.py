@@ -154,9 +154,12 @@ class TancoDriver(cmdlib.Cmd):
         num_desc_removed = sum(1 for line in lines if line.strip().startswith(': '))
 
         # Show summary
+        has_todo = any(l.strip().lower().startswith('#+todo:') for l in lines)
         print(f'{"Would migrate" if args.check else "Migrating"}: {args.file}')
         print(f'Changes:')
         print(f'  - Add #+tanco-format: 0.2 directive')
+        if not has_todo:
+            print(f'  - Add #+todo: TODO | DONE TEST directive')
         print(f'  - Migrate {num_tests} tests')
         print(f'  - Remove {num_name_removed} #+name: directives')
         print(f'  - Remove TODO/DONE from test headlines')
@@ -542,6 +545,7 @@ def _migrate_org_file(lines):
     migrated = []
     i = 0
     format_added = False
+    todo_added = False
 
     while i < len(lines):
         line = lines[i]
@@ -575,6 +579,16 @@ def _migrate_org_file(lines):
         if not format_added and i == 0:
             migrated.append('#+tanco-format: 0.2\n')
             format_added = True
+
+        # Add #+todo: line if we've added format and haven't added todo yet
+        # Add it when we hit the first headline (starts with *)
+        if format_added and not todo_added and line.startswith('*'):
+            # Check if #+todo: already exists in original file
+            has_todo = any(l.strip().lower().startswith('#+todo:') for l in lines)
+            if not has_todo:
+                migrated.append('#+todo: TODO | DONE TEST\n')
+                migrated.append('\n')
+            todo_added = True
 
         # Check if this is a test headline by looking for #+name: nearby
         if line.startswith('*'):
