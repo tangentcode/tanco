@@ -439,8 +439,33 @@ class TancoDriver(cmdlib.Cmd):
 
     @staticmethod
     def do_test(arg):
-        """Run the tests."""
-        runner.main([x for x in arg.split(' ') if x != ''])
+        """Run the tests.
+        Usage: test [-t / --tests ORG_FILE] [TEST_NAMES...]
+        """
+        parser = argparse.ArgumentParser(prog='test', description='Run tanco tests')
+        parser.add_argument('-t', '--tests', help='Path to org file containing tests')
+        parser.add_argument('test_names', nargs='*', help='Specific test names to run')
+
+        try:
+            args = parser.parse_args(shlex.split(arg) if arg else [])
+        except SystemExit:
+            return
+
+        # Load config and override test_path if -t is provided
+        cfg = runner.load_config()
+        if args.tests:
+            cfg.test_path = args.tests
+
+        # Run tests with optional name filtering
+        try:
+            runner.run_tests(cfg, args.test_names if args.test_names else None)
+        except runner.NoTestPlanError:
+            runner.error(cfg, ['No challenge selected.',
+                              'Use `tanco init`, `tanco test -t file.org`, or set TEST_PLAN environment variable.'])
+        except runner.StopTesting:
+            pass
+        except Exception:
+            runner.handle_unexpected_error(cfg)
 
     @staticmethod
     def do_q(_arg):

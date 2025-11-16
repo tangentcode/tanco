@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Org file format v0.2**: New org-native format using TEST headlines instead of `#+name:` directives, with cleaner syntax and better org-mode integration.
 - **Migration tool**: New `tanco migrate` command to convert v0.1 org files to v0.2 format, with `--check` option for previewing changes before applying. Preserves original headline text when no `=` title line exists, and saves conflicting headlines as comments.
 - **Format auto-detection**: Parser automatically detects org file format version based on `#+tanco-format:` directive.
+- **Test file override**: `tanco test` now supports `-t/--tests` flag to override test file, matching the behavior of `tanco run` for consistency.
 
 ### Changed
 - **Org file syntax**: Test definitions now use `** TEST name : title` headlines instead of separate `#+name:` directives.
