@@ -10,6 +10,9 @@ import subprocess
 import sys
 import traceback
 
+import pexpect
+from pexpect.popen_spawn import PopenSpawn
+
 from . import database as db
 from . import model as m
 from . import orgtest
@@ -71,6 +74,11 @@ def load_config() -> Config:
         # Allow .tanco to override input_path from env
         if 'input_path' in target:
              kw['input_path'] = target['input_path']
+        # Load restart-cmd settings for persistent process mode
+        if 'restart-cmd' in target:
+            kw['restart_cmd'] = target['restart-cmd']
+        if 'restart-expect' in target:
+            kw['restart_expect'] = target['restart-expect']
 
     # Load from environment variables (can override .tanco or provide defaults)
     if 'INPUT_PATH' in os.environ and 'input_path' not in kw:
@@ -220,6 +228,87 @@ def clean_output(cfg: Config, actual: str) -> list[str]:
     return lines
 
 
+def run_tests_persistent(cfg: Config, tests: list[TestDescription], names=None):
+    """Run tests using a persistent process, sending restart_cmd between tests."""
+    # Build command string for PopenSpawn
+    program_args = cfg.program_args
+    if program_args and program_args[0] == '-c':
+        # Shell mode: join the command
+        cmd = ' '.join(program_args[1:])
+        if os.name == 'nt':
+            cmd = cmd.replace('/', '\\')
+    else:
+        # Normal mode: join args with spaces
+        cmd = ' '.join(program_args)
+
+    # Spawn persistent process
+    try:
+        child = PopenSpawn(cmd, encoding='utf-8', timeout=5)
+    except Exception as e:
+        fail(cfg, [f'Failed to spawn process: {e}',
+                   f'Command: {cmd}'])
+
+    num_passed = 0
+    try:
+        for i, test in enumerate(tests):
+            if names and test.name not in names:
+                continue
+
+            # Send input lines
+            for line in test.ilines:
+                child.sendline(line)
+
+            # Send restart command to mark end of input and trigger output delimiter
+            child.sendline(cfg.restart_cmd)
+
+            # Wait for delimiter (must be on its own line, consume the newline)
+            try:
+                child.expect(cfg.restart_expect + r'\r?\n', timeout=5)
+            except pexpect.TIMEOUT:
+                fail(cfg, [f'Timeout waiting for {cfg.restart_expect!r} after test input.',
+                           'Make sure your restart command produces the expected output on its own line.'], test)
+            except pexpect.EOF:
+                output = child.before if child.before else ''
+                fail(cfg, ['Process exited unexpectedly during test.',
+                           f'Output before exit: {output}'], test)
+
+            # Extract output (everything between input and delimiter)
+            raw_output = child.before if child.before else ''
+            actual = clean_output(cfg, raw_output)
+
+            # Validate
+            local_check_output(cfg, actual, test)
+
+            print('.', end='', flush=True)
+            num_passed += 1
+
+        # All tests passed
+        print()
+        print('All %d tests passed.' % num_passed)
+        print()
+        if cfg.test_path:
+            print('All tests in %s passed.' % cfg.test_path)
+        else:
+            print('This may be a good time to commit your changes,')
+            print('or spend some time improving your code.')
+            if cfg.attempt:
+                print()
+                print("When you're ready, run `tanco next` to start work on the next feature.")
+                print()
+                TancoClient().send_pass(cfg)
+
+    except (TestFailure, StopTesting):
+        print()
+        print('%d of %d tests passed.' % (num_passed, len(tests)))
+        raise
+    finally:
+        # Clean up
+        try:
+            child.kill(9)
+        except Exception:
+            pass
+
+
 def save_new_rule(attempt: str, test: str, rule: m.ValidationRule):
     db.save_progress(attempt, test, True)
     db.save_rule(attempt, test, rule.to_data())
@@ -262,9 +351,15 @@ def get_challenge(cfg: Config) -> Challenge:
 
 
 def run_tests(cfg: Config, names=None):
-    num_passed = 0
     challenge = get_challenge(cfg)
     tests = challenge.tests
+
+    # Use persistent process mode if restart_cmd is configured
+    if cfg.restart_cmd and cfg.restart_expect:
+        run_tests_persistent(cfg, tests, names)
+        return
+
+    num_passed = 0
     try:
         for i, test in enumerate(tests):
             if names and test.name not in names: continue

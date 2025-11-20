@@ -163,6 +163,10 @@ class Config:
     attempt: str = ''
     # path to org file when using --tests
     test_path: str | None = None
+    # command to send between tests to reset state (enables persistent process mode)
+    restart_cmd: str = ''
+    # expected response after restart_cmd (output delimiter)
+    restart_expect: str = ''
 
     def __post_init__(self):
         if not self.input_path:
@@ -181,6 +185,11 @@ class Config:
         # Only include 'shell' if it's True (False is the default)
         if self.use_shell:
             target['shell'] = True
+        # Include restart-cmd settings if present
+        if self.restart_cmd:
+            target['restart-cmd'] = self.restart_cmd
+        if self.restart_expect:
+            target['restart-expect'] = self.restart_expect
         data = {'targets': {'main': target}}
         for key in ['input_path', 'test_plan', 'skip_lines']:
             if getattr(self, key):
