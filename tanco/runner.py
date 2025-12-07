@@ -94,6 +94,10 @@ class NoTestPlanError(Exception):
     pass
 
 
+class NoTestsFoundError(Exception):
+    """Raised when a test source exists but contains no tests."""
+
+
 class StopTesting(Exception):
     pass
 
@@ -354,6 +358,14 @@ def run_tests(cfg: Config, names=None):
     challenge = get_challenge(cfg)
     tests = challenge.tests
 
+    # Check for empty tests list
+    if not tests:
+        source = cfg.test_path or cfg.test_plan or 'database'
+        raise NoTestsFoundError(
+            f'No tests found in {source}. '
+            'Make sure the file contains valid test definitions.',
+        )
+
     # Use persistent process mode if restart_cmd is configured
     if cfg.restart_cmd and cfg.restart_expect:
         run_tests_persistent(cfg, tests, names)
@@ -502,8 +514,17 @@ def main(names: list[str]):
     try:
         run_tests(cfg, names)
     except NoTestPlanError:
-        error(cfg, ['No challenge selected.'
+        error(cfg, ['No challenge selected.',
                     'Use `tanco init` or set TEST_PLAN environment variable.'])
+    except NoTestsFoundError as e:
+        error(cfg, [str(e),
+                    '',
+                    'For org files, tests should be defined using:',
+                    '  ** TEST testname : title',
+                    '  #+begin_src',
+                    '  > input line',
+                    '  expected output',
+                    '  #+end_src'])
     except StopTesting:
         pass
     except Exception:

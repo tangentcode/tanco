@@ -465,6 +465,15 @@ class TancoDriver(cmdlib.Cmd):
         except runner.NoTestPlanError:
             runner.error(cfg, ['No challenge selected.',
                               'Use `tanco init`, `tanco test -t file.org`, or set TEST_PLAN environment variable.'])
+        except runner.NoTestsFoundError as e:
+            runner.error(cfg, [str(e),
+                              '',
+                              'For org files, tests should be defined using:',
+                              '  ** TEST testname : title',
+                              '  #+begin_src',
+                              '  > input line',
+                              '  expected output',
+                              '  #+end_src'])
         except runner.StopTesting:
             pass
         except Exception:
@@ -531,8 +540,17 @@ class TancoDriver(cmdlib.Cmd):
             runner.run_tests(cfg)
         except runner.NoTestPlanError:
             print("No tests specified. Use --tests PATH or ensure you're in a tanco project.")
+        except runner.NoTestsFoundError as e:
+            print(str(e))
+            print()
+            print('For org files, tests should be defined using:')
+            print('  ** TEST testname : title')
+            print('  #+begin_src')
+            print('  > input line')
+            print('  expected output')
+            print('  #+end_src')
         except runner.StopTesting:
-            pass # Normal exit after test failure
+            pass  # Normal exit after test failure
         except Exception:
             # handle_unexpected_error already prints traceback
             runner.handle_unexpected_error(cfg)
