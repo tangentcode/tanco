@@ -525,6 +525,10 @@ def main(names: list[str]):
                     '  > input line',
                     '  expected output',
                     '  #+end_src'])
+    except FileNotFoundError as e:
+        error(cfg, [f'Test file not found: {e.filename}',
+                    '',
+                    'Make sure the path is correct and the file exists.'])
     except StopTesting:
         pass
     except Exception:

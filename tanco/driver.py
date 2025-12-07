@@ -474,6 +474,10 @@ class TancoDriver(cmdlib.Cmd):
                               '  > input line',
                               '  expected output',
                               '  #+end_src'])
+        except FileNotFoundError as e:
+            runner.error(cfg, [f'Test file not found: {e.filename}',
+                              '',
+                              'Make sure the path is correct and the file exists.'])
         except runner.StopTesting:
             pass
         except Exception:
@@ -549,6 +553,10 @@ class TancoDriver(cmdlib.Cmd):
             print('  > input line')
             print('  expected output')
             print('  #+end_src')
+        except FileNotFoundError as e:
+            print(f'Test file not found: {e.filename}')
+            print()
+            print('Make sure the path is correct and the file exists.')
         except runner.StopTesting:
             pass  # Normal exit after test failure
         except Exception:
