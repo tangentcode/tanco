@@ -88,8 +88,12 @@ class TestReaderStateMachine:
         self.current_test_name = None  # test name from headline
         self.current_test_title = None  # test title from headline
         self.body_lines = []  # collect body text after #+end_src in v0.2
+        self.valid_name_pattern = re.compile(r'^[a-zA-Z0-9._\-]+$')
         self.test_headline_pattern = re.compile(
             r'^\*+\s*(?:TODO|DONE)?\s*TEST\s+([\w.\-]+)\s*(?::\s*(.+))?$'
+        )
+        self.test_headline_loose = re.compile(
+            r'^\*+\s*(?:TODO|DONE)?\s*TEST\s+(\S+)'
         )
 
     # -- event handlers -----------------------------------------
@@ -143,12 +147,22 @@ class TestReaderStateMachine:
             match = self.test_headline_pattern.match(line.rstrip())
             if match:
                 test_name = match.group(1)
+                if not self.valid_name_pattern.match(test_name):
+                    raise ValueError(
+                        f'invalid test name {test_name!r} on line {self.lineno}: '
+                        f'names may only contain [a-zA-Z0-9._-]')
                 test_title = match.group(2) if match.group(2) else None
                 self.current_test_name = test_name
                 self.current_test_title = test_title
                 self.current_headline = line.rstrip()
                 # Transition to state 0 to look for #+begin_src
                 self.state = 0
+            else:
+                loose = self.test_headline_loose.match(line.rstrip())
+                if loose:
+                    raise ValueError(
+                        f'invalid test name {loose.group(1)!r} on line {self.lineno}: '
+                        f'names may only contain [a-zA-Z0-9._-]')
 
         # Allow other lines - they might be comments or other org content
         elif not line.strip():  # Empty lines are fine
