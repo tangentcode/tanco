@@ -13,3 +13,5 @@ sdist/
 wheels/
 *.egg-info/
 *.egg
+.claude
+.venv
