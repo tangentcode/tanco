@@ -459,29 +459,8 @@ class TancoDriver(cmdlib.Cmd):
         if args.tests:
             cfg.test_path = args.tests
 
-        # Run tests with optional name filtering
-        try:
-            runner.run_tests(cfg, args.test_names if args.test_names else None)
-        except runner.NoTestPlanError:
-            runner.error(cfg, ['No challenge selected.',
-                              'Use `tanco init`, `tanco test -t file.org`, or set TEST_PLAN environment variable.'])
-        except runner.NoTestsFoundError as e:
-            runner.error(cfg, [str(e),
-                              '',
-                              'For org files, tests should be defined using:',
-                              '  ** TEST testname : title',
-                              '  #+begin_src',
-                              '  > input line',
-                              '  expected output',
-                              '  #+end_src'])
-        except FileNotFoundError as e:
-            runner.error(cfg, [f'Test file not found: {e.filename}',
-                              '',
-                              'Make sure the path is correct and the file exists.'])
-        except runner.StopTesting:
-            pass
-        except Exception:
-            runner.handle_unexpected_error(cfg)
+        names = args.test_names or None
+        _run_tests_with_error_handling(cfg, names)
 
     @staticmethod
     def do_q(_arg):
@@ -495,43 +474,44 @@ class TancoDriver(cmdlib.Cmd):
 
     def do_run(self, arg):
         """Run tests from an org file or from the database
-        Usage: run [-t / --tests ORG_FILE] [-v / --verbose] [PROGRAM_ARGS...]
+        Usage: run [-t / --tests ORG_FILE] [-c COMMAND] [-v / --verbose] [TEST_NAMES...] [-- PROGRAM_ARGS...]
         """
         parser = argparse.ArgumentParser(prog='run', description='Run tanco tests')
         parser.add_argument('-t', '--tests', help='Path to org file containing tests')
+        parser.add_argument('-c', help='Run command via shell (e.g. -c \'python script.py\')')
         parser.add_argument('-v', '--verbose', action='store_true', help='Print configuration before running tests')
+        parser.add_argument('test_names', nargs='*', help='Specific test names to run')
 
-        # Parse known args first to get tanco args
+        # Split on '--' to separate tanco args from program args
+        tokens = shlex.split(arg) if arg else []
+        if '--' in tokens:
+            sep = tokens.index('--')
+            tanco_args = tokens[:sep]
+            program_args = tokens[sep + 1:]
+        else:
+            tanco_args = tokens
+            program_args = []
+
         try:
-            args, program_args = parser.parse_known_args(shlex.split(arg) if arg else [])
+            args = parser.parse_args(tanco_args)
         except SystemExit: # Prevent argparse from exiting the Cmd loop
              return
 
         cfg = runner.load_config()
 
-        # Determine program args and shell usage
-        parsed_program_args = []
-        explicit_shell = False
         if args.tests:
             cfg.test_path = args.tests
             cfg.attempt = None  # Don't use database when running from org file
-            parsed_program_args = program_args # Use remaining args after --tests
-        elif program_args:
-             # If not --tests, but extra args are given, assume they override .tanco config
-             parsed_program_args = program_args
-        else:
-            # Use args from .tanco or default if no override
-            parsed_program_args = cfg.program_args
-            explicit_shell = cfg.use_shell # Respect shell setting from .tanco
 
-        # Check for '-c' flag and update cfg for verbose output and potentially runner
-        if parsed_program_args and parsed_program_args[0] == '-c':
-            cfg.use_shell = True # Set shell=True for verbose output
-            # The actual args list passed to spawn still includes '-c' for spawn to process
-            cfg.program_args = parsed_program_args
-        else:
-            cfg.program_args = parsed_program_args
-            cfg.use_shell = explicit_shell # Use value from .tanco or default
+        if args.c:
+            cfg.use_shell = True
+            cfg.program_args = ['-c', args.c]
+        elif program_args:
+            cfg.program_args = program_args
+            cfg.use_shell = False
+        elif not args.tests:
+            # No program override; use .tanco defaults
+            pass
 
         # Dump config if verbose flag is set
         if args.verbose:
@@ -539,29 +519,33 @@ class TancoDriver(cmdlib.Cmd):
             pprint.pprint(cfg)
             print("---------------------------")
 
-        try:
-            # Pass the possibly modified cfg to run_tests
-            runner.run_tests(cfg)
-        except runner.NoTestPlanError:
-            print("No tests specified. Use --tests PATH or ensure you're in a tanco project.")
-        except runner.NoTestsFoundError as e:
-            print(str(e))
-            print()
-            print('For org files, tests should be defined using:')
-            print('  ** TEST testname : title')
-            print('  #+begin_src')
-            print('  > input line')
-            print('  expected output')
-            print('  #+end_src')
-        except FileNotFoundError as e:
-            print(f'Test file not found: {e.filename}')
-            print()
-            print('Make sure the path is correct and the file exists.')
-        except runner.StopTesting:
-            pass  # Normal exit after test failure
-        except Exception:
-            # handle_unexpected_error already prints traceback
-            runner.handle_unexpected_error(cfg)
+        names = args.test_names or None
+        _run_tests_with_error_handling(cfg, names)
+
+
+def _run_tests_with_error_handling(cfg, names=None):
+    try:
+        runner.run_tests(cfg, names)
+    except runner.NoTestPlanError:
+        runner.error(cfg, ['No challenge selected.',
+                          'Use `tanco init`, `tanco test -t file.org`, or set TEST_PLAN environment variable.'])
+    except runner.NoTestsFoundError as e:
+        runner.error(cfg, [str(e),
+                          '',
+                          'For org files, tests should be defined using:',
+                          '  ** TEST testname : title',
+                          '  #+begin_src',
+                          '  > input line',
+                          '  expected output',
+                          '  #+end_src'])
+    except FileNotFoundError as e:
+        runner.error(cfg, [f'Test file not found: {e.filename}',
+                          '',
+                          'Make sure the path is correct and the file exists.'])
+    except runner.StopTesting:
+        pass
+    except Exception:
+        runner.handle_unexpected_error(cfg)
 
 
 def _migrate_org_file(lines):

@@ -111,25 +111,34 @@ Tanco can now run tests defined directly within an `.org` file, independent of t
 Use the `run` command with the `--tests` flag:
 
 ```bash
-tanco run --tests path/to/your/tests.org [program_and_args...]
+tanco run --tests path/to/your/tests.org -c 'your_command'
 ```
 
-*   `--tests path/to/your/tests.org`: Specifies the org file containing the test definitions (using `#+name:`, `#+begin_src`, etc.).
-*   `[program_and_args...]`: The command and arguments needed to execute the program being tested.
-    *   If your program needs to be run via the shell (e.g., using interpreters like `node` or `python`), prefix the command with `-c`. For example:
-        ```bash
-        tanco run --tests tests.org -c 'node your_script.js'
-        tanco run --tests tests.org -c 'python your_script.py arg1'
-        ```
-    *   If your program is a direct executable (like `myprogram.exe` on Windows or `./myprogram` on Linux), just provide the path and arguments:
-        ```bash
-        tanco run --tests tests.org path/to/your_program arg1 arg2
-        ```
+*   `--tests path/to/your/tests.org` (or `-t`): Specifies the org file containing the test definitions.
+*   `-c 'command'`: Run the command via the shell. For example:
+    ```bash
+    tanco run -t tests.org -c 'node your_script.js'
+    tanco run -t tests.org -c 'python your_script.py arg1'
+    ```
+*   For direct executables, use `--` to separate program args:
+    ```bash
+    tanco run -t tests.org -- ./your_program arg1 arg2
+    ```
+
+**Filtering by test name:**
+
+Both `test` and `run` accept test names to run only specific tests:
+
+```bash
+tanco test -t tests.org foo bar
+tanco run -t tests.org foo bar -c 'python script.py'
+tanco run -t tests.org foo bar -- ./my_program
+```
 
 **Verbose Output:**
 
 You can add the `-v` or `--verbose` flag to the `run` command to print the configuration Tanco is using before executing the tests. This is helpful for debugging paths and arguments:
 
 ```bash
-tanco run -v --tests tests.org ...
+tanco run -v -t tests.org -c 'python script.py'
 ```

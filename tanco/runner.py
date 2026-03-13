@@ -344,10 +344,12 @@ def local_check_output(cfg: m.Config, actual: list[str], test: TestDescription):
 
 
 def get_challenge(cfg: Config) -> Challenge:
-    if cfg.test_path:
-        return orgtest.read_challenge(cfg.test_path)
-    elif cfg.test_plan:
-        return orgtest.read_challenge(cfg.test_plan)
+    if cfg.test_path or cfg.test_plan:
+        path = cfg.test_path or cfg.test_plan
+        try:
+            return orgtest.read_challenge(path)
+        except ValueError as e:
+            fail(cfg, [f'{path}: {e}'])
     elif cfg.attempt:
         return db.challenge_from_attempt(cfg.attempt)
     else:

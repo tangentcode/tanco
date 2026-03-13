@@ -93,17 +93,19 @@ Use `tanco migrate` to convert v0.1 files to v0.2 format.
 tanco test
 
 # Run tests from org file (local/offline mode)
-tanco run --tests path/to/tests.org [program_and_args...]
+tanco run -t tests.org -c 'python my_script.py'
+tanco run -t tests.org -c 'node my_script.js'
 
-# With shell invocation (for interpreted languages)
-tanco run --tests tests.org -c 'python my_script.py'
-tanco run --tests tests.org -c 'node my_script.js'
+# Direct executables (use -- to separate program args)
+tanco run -t tests.org -- ./my_program arg1 arg2
 
-# Direct executables
-tanco run --tests tests.org ./my_program arg1 arg2
+# Filter by test name
+tanco test -t tests.org foo bar
+tanco run -t tests.org foo bar -c 'python my_script.py'
+tanco run -t tests.org foo bar -- ./my_program arg1 arg2
 
 # Verbose mode (show config)
-tanco run -v --tests tests.org ...
+tanco run -v -t tests.org -c 'python my_script.py'
 
 # Check that program launches correctly
 tanco check [program_args...]

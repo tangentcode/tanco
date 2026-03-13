@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Test name filtering for `run` command**: Both `test` and `run` commands now support filtering by test name. Use positional args for test names and `--` to separate program args (e.g., `tanco run -t tests.org foo bar -- ./my_program`).
+- **`-c` flag for `run` command**: Shell commands are now specified as a proper flag (`-c 'python script.py'`) rather than being passed as a raw program argument.
 - **Org file format v0.2**: New org-native format using TEST headlines instead of `#+name:` directives, with cleaner syntax and better org-mode integration.
 - **Migration tool**: New `tanco migrate` command to convert v0.1 org files to v0.2 format, with `--check` option for previewing changes before applying. Preserves original headline text when no `=` title line exists, and saves conflicting headlines as comments.
 - **Format auto-detection**: Parser automatically detects org file format version based on `#+tanco-format:` directive.
