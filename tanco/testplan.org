@@ -1,4 +1,5 @@
 #+title: tanco self tests
+#+tanco-format: 0.2
 #+name: tanco
 #+server: https://tanco.tangentcode.com/
 
@@ -7,28 +8,27 @@
 # will appear as a foldable outline, but if you don't want to use
 # emacs, it's fine to just edit it by hand.
 
-* DONE [1/2] basic i/o
-** DONE establish a command loop and a way to exit
+#+todo: TODO | DONE TEST
 
-#+name: io.q
+* DONE [1/2] basic i/o
+** TEST io.q : quit
+
 #+begin_src
 > q
-= q : quit
-: The 'q' command instructs tanco-shell to quit.
-:
-: the shell should not produce any output unless
-: explicitly instructed to do so.
 #+end_src
 
-** TODO list available challenges/courses
+The 'q' command instructs tanco-shell to quit.
 
-#+name: io.c
+the shell should not produce any output unless
+explicitly instructed to do so.
+
+** TEST io.c : list available challenges
+
 #+begin_src
 > challenges
 ["learntris", "a famous falling blocks game"]
 ["other", "some other course"]
 ["tanco", "tanco self tests"]
-= challenges : list available challenges
 #+end_src
 
 
@@ -40,15 +40,14 @@
 
 Here is the test format (remove the leading ':  ' from each line, and also the comments on the right).
 
-:  #+name: test.name                    <- must be unique!
-:  #+begin_src                          <- marks start of test
-:  # other lines with # are comments    <- comment
-:  > o                                  <- '>' indicates an input line
-:  output                               <- anything besides (#, >, :, or =)
-:  more output                           | is expected output.
-:  > q                                  <- always send the quit command!
-:  = my very own test                   <- this is the title for the test
-:  : This is where I describe the test. <- ':' indicates a line of description
-:  : Here's another descriptive line.    | these lines show up when a test fails.
-:  #+end_src                            <- marks end of test
+:  ** TEST test.name : my very own test  <- TEST headline with name and title
+:  #+begin_src                           <- marks start of test
+:  # other lines with # are comments     <- comment
+:  > o                                   <- '>' indicates an input line
+:  output                                <- anything besides (#, >) is
+:  more output                            | expected output.
+:  > q                                   <- always send the quit command!
+:  #+end_src                             <- marks end of test
+:  This is where I describe the test.    <- description is plain text after #+end_src
+:  Here's another descriptive line.       | these lines show up when a test fails.
 

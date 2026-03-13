@@ -652,25 +652,22 @@ def _migrate_org_file(lines):
                         stripped = lines[end_idx].strip()
                         if stripped.startswith('= '):
                             title = stripped[2:]
-                        elif stripped.startswith(': '):
-                            desc_lines.append(stripped[2:])
+                        elif stripped == ':' or stripped.startswith(': '):
+                            desc_lines.append(stripped[2:] if len(stripped) > 2 else '')
                         else:
                             test_content.append(lines[end_idx])
                         end_idx += 1
 
                     # Determine final title
-                    # If no = line, use headline text as title
-                    # If both exist and differ, use = line but preserve headline as comment
-                    final_title = title if title else headline_text
-                    preserve_headline_comment = (title and headline_text and
-                                                 title != headline_text and
-                                                 headline_text != '')
+                    # The v0.1 = line format is often "= label : description"
+                    # where label is redundant with the test name, so strip it
+                    if title and ':' in title:
+                        final_title = title.split(':', 1)[1].strip()
+                    else:
+                        final_title = title if title else headline_text
 
                     # Build migrated test
-                    if preserve_headline_comment:
-                        migrated.append(f'{stars} TEST {test_name} : {final_title}\n')
-                        migrated.append(f'# Original headline: {headline_text}\n')
-                    elif final_title:
+                    if final_title:
                         migrated.append(f'{stars} TEST {test_name} : {final_title}\n')
                     else:
                         migrated.append(f'{stars} TEST {test_name}\n')
